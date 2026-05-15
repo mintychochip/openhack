@@ -1,0 +1,7 @@
+# Postfix Body Checks
+# Block suspicious content patterns
+
+/click here to claim/ REJECT Potential phishing
+/verify your account immediately/i REJECT Potential phishing
+/lottery winner/ REJECT Potential spam
+/wire transfer/ REJECT Potential fraud

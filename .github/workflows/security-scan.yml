@@ -1,0 +1,165 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  # ================================
+  # Cargo Audit (dependency vulnerabilities)
+  # ================================
+  cargo-audit:
+    name: Cargo Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+
+      - name: Run cargo audit
+        run: cargo audit
+
+  # ================================
+  # Trivy filesystem scan
+  # ================================
+  trivy-scan:
+    name: Trivy Filesystem Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # ================================
+  # Secret scanning
+  # ================================
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@v3.53.0
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+  # ================================
+  # Docker image scanning
+  # ================================
+  container-scan:
+    name: Trivy Container Scan
+    runs-on: ubuntu-latest
+    needs: [trivy-scan, secret-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: auth-svc
+            path: services/auth-rust
+          - name: core-svc
+            path: services/core-rust
+          - name: mail-svc
+            path: services/mail-rust
+          - name: judging-svc
+            path: services/judging-rust
+          - name: leaderboard-svc
+            path: services/leaderboard
+          - name: notify-svc
+            path: services/notify-rust
+          - name: ai-svc
+            path: services/ai-rust
+          - name: analytics-svc
+            path: services/analytics-rust
+          - name: sponsors-svc
+            path: services/sponsors-rust
+          - name: media-svc
+            path: services/media-rust
+          - name: gateway-svc
+            path: services/gateway-rust
+          - name: discord-bot-svc
+            path: services/discord-bot-rust
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build --target container -t ${{ matrix.service.name }} ${{ matrix.service.path }}
+
+      - name: Run Trivy on image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ matrix.service.name }}
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+
+  # ================================
+  # Kubernetes security scan
+  # ================================
+  k8s-scan:
+    name: Kubernetes Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.14.0
+
+      - name: Lint Helm chart
+        run: helm lint deploy/helm/openhack/
+
+      - name: Install kubeconform
+        run: |
+          wget https://github.com/yannh/kubeconform/releases/download/v0.6.4/kubeconform-linux-amd64.tar.gz
+          tar xzf kubeconform-linux-amd64.tar.gz
+          sudo mv kubeconform /usr/local/bin/
+
+      - name: Validate Helm templates
+        run: |
+          helm template openhack deploy/helm/openhack/ | kubeconform -summary -
+
+      - name: Install checkov
+        run: pip install checkov
+
+      - name: Run checkov
+        run: checkov -d deploy/helm/openhack/ --framework helm

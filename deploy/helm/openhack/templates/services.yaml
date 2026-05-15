@@ -1,0 +1,235 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-auth-svc
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3001
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: auth-svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-core-svc
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: core-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3002
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: core-svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-judging-svc
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: judging-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3003
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: judging-svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-leaderboard-svc
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: leaderboard-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3004
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: leaderboard-svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-mail-svc
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mail-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3005
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: mail-svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-notify-svc
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: notify-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3006
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: notify-svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-ai-svc
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ai-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3007
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: ai-svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-analytics-svc
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3008
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics-svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-sponsors-svc
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: sponsors-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3009
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: sponsors-svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-media-svc
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: media-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3010
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: media-svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-gateway
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-discord-bot-svc
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: discord-bot-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3011
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: discord-bot-svc
+---
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhack.fullname" . }}-web
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openhack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+{{- end }}

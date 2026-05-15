@@ -1,0 +1,465 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main, develop]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ================================
+  # Lint Job (workspace-wide)
+  # ================================
+  lint:
+    name: Clippy + Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo target
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --check --all
+
+      - name: Run clippy (pedantic, deny)
+        run: cargo clippy --workspace -- -D clippy::pedantic -D warnings
+
+  # ================================
+  # Check Job (workspace-wide)
+  # ================================
+  check:
+    name: Cargo Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo target
+        uses: Swatinem/rust-cache@v2
+
+      - name: Cargo check
+        run: cargo check --workspace
+
+  # ================================
+  # Test Job (workspace-wide)
+  # ================================
+  test:
+    name: Cargo Test
+    runs-on: ubuntu-latest
+    needs: [lint, check]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo target
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test --workspace
+
+  # ================================
+  # Audit Job (workspace-wide)
+  # ================================
+  audit:
+    name: Cargo Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+
+      - name: Run cargo audit
+        run: cargo audit
+
+  # ================================
+  # Frontend Job
+  # ================================
+  frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Type check
+        working-directory: web
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: web
+        run: npx next build
+        env:
+          NEXT_PUBLIC_GATEWAY_URL: ""
+
+  # ================================
+  # E2E Test Job
+  # ================================
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [test, frontend]
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright
+        working-directory: tests/e2e
+        run: npm ci && npx playwright install --with-deps
+
+      - name: Run E2E tests
+        working-directory: tests/e2e
+        run: npx playwright test
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: tests/e2e/playwright-report/
+          retention-days: 7
+
+  # ================================
+  # Detect Changed Services
+  # ================================
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    needs: [test, frontend]
+    if: github.event_name == 'push'
+    outputs:
+      auth-rust: ${{ steps.filter.outputs.auth-rust }}
+      core-rust: ${{ steps.filter.outputs.core-rust }}
+      mail-rust: ${{ steps.filter.outputs.mail-rust }}
+      judging-rust: ${{ steps.filter.outputs.judging-rust }}
+      leaderboard: ${{ steps.filter.outputs.leaderboard }}
+      notify-rust: ${{ steps.filter.outputs.notify-rust }}
+      ai-rust: ${{ steps.filter.outputs.ai-rust }}
+      analytics-rust: ${{ steps.filter.outputs.analytics-rust }}
+      sponsors-rust: ${{ steps.filter.outputs.sponsors-rust }}
+      media-rust: ${{ steps.filter.outputs.media-rust }}
+      gateway-rust: ${{ steps.filter.outputs.gateway-rust }}
+      discord-bot-rust: ${{ steps.filter.outputs.discord-bot-rust }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            auth-rust:
+              - 'services/auth-rust/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            core-rust:
+              - 'services/core-rust/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            mail-rust:
+              - 'services/mail-rust/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            judging-rust:
+              - 'services/judging-rust/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            leaderboard:
+              - 'services/leaderboard/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            notify-rust:
+              - 'services/notify-rust/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            ai-rust:
+              - 'services/ai-rust/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            analytics-rust:
+              - 'services/analytics-rust/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            sponsors-rust:
+              - 'services/sponsors-rust/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            media-rust:
+              - 'services/media-rust/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            gateway-rust:
+              - 'services/gateway-rust/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            discord-bot-rust:
+              - 'services/discord-bot-rust/**'
+              - 'services/openhack-common/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+
+  # ================================
+  # Build & Push Images
+  # ================================
+  build:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: auth-svc
+            path: services/auth-rust
+            port: 3001
+            changed: ${{ needs.changes.outputs.auth-rust }}
+          - name: core-svc
+            path: services/core-rust
+            port: 3002
+            changed: ${{ needs.changes.outputs.core-rust }}
+          - name: mail-svc
+            path: services/mail-rust
+            port: 3005
+            changed: ${{ needs.changes.outputs.mail-rust }}
+          - name: judging-svc
+            path: services/judging-rust
+            port: 3003
+            changed: ${{ needs.changes.outputs.judging-rust }}
+          - name: leaderboard-svc
+            path: services/leaderboard
+            port: 3004
+            changed: ${{ needs.changes.outputs.leaderboard }}
+          - name: notify-svc
+            path: services/notify-rust
+            port: 3006
+            changed: ${{ needs.changes.outputs.notify-rust }}
+          - name: ai-svc
+            path: services/ai-rust
+            port: 3007
+            changed: ${{ needs.changes.outputs.ai-rust }}
+          - name: analytics-svc
+            path: services/analytics-rust
+            port: 3008
+            changed: ${{ needs.changes.outputs.analytics-rust }}
+          - name: sponsors-svc
+            path: services/sponsors-rust
+            port: 3009
+            changed: ${{ needs.changes.outputs.sponsors-rust }}
+          - name: media-svc
+            path: services/media-rust
+            port: 3010
+            changed: ${{ needs.changes.outputs.media-rust }}
+          - name: gateway-svc
+            path: services/gateway-rust
+            port: 8000
+            changed: ${{ needs.changes.outputs.gateway-rust }}
+          - name: discord-bot-svc
+            path: services/discord-bot-rust
+            port: 3011
+            changed: ${{ needs.changes.outputs.discord-bot-rust }}
+
+    steps:
+      - name: Skip unchanged service
+        if: matrix.service.changed == 'false'
+        run: echo "No changes detected, skipping build"
+
+      - name: Checkout code
+        if: matrix.service.changed == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        if: matrix.service.changed == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: matrix.service.changed == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        if: matrix.service.changed == 'true'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service.name }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Build and push (container)
+        if: matrix.service.changed == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.service.path }}/Dockerfile
+          push: true
+          target: container
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push (lambda)
+        if: matrix.service.changed == 'true' && matrix.service.name != 'gateway-svc'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.service.path }}/Dockerfile
+          push: true
+          target: lambda
+          tags: ${{ steps.meta.outputs.tags }}-lambda
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ================================
+  # Deploy to Kubernetes
+  # ================================
+  deploy-k8s:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.14.0
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: v1.29.0
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install openhack ./deploy/helm/openhack \
+            --namespace openhack \
+            --create-namespace \
+            --set global.imageRegistry=ghcr.io/${{ github.repository_owner }} \
+            --set authService.image.tag=${{ github.ref_name }} \
+            --set coreService.image.tag=${{ github.ref_name }} \
+            --set judgingService.image.tag=${{ github.ref_name }} \
+            --set leaderboardService.image.tag=${{ github.ref_name }} \
+            --set mailService.image.tag=${{ github.ref_name }} \
+            --set notifyService.image.tag=${{ github.ref_name }} \
+            --set aiService.image.tag=${{ github.ref_name }} \
+            --set analyticsService.image.tag=${{ github.ref_name }} \
+            --set sponsorsService.image.tag=${{ github.ref_name }} \
+            --set mediaService.image.tag=${{ github.ref_name }} \
+            --set gateway.image.tag=${{ github.ref_name }} \
+            --set discordBotService.image.tag=${{ github.ref_name }} \
+            --set secrets.jwtSecret=${{ secrets.JWT_SECRET }} \
+            --set secrets.databasePassword=${{ secrets.DB_PASSWORD }} \
+            --wait \
+            --timeout 10m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/openhack-auth-svc -n openhack
+          kubectl rollout status deployment/openhack-core-svc -n openhack
+          kubectl rollout status deployment/openhack-gateway-svc -n openhack
+
+  # ================================
+  # Deploy with Docker Compose
+  # ================================
+  deploy-compose:
+    name: Deploy with Docker Compose
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy with Docker Compose
+        run: |
+          docker compose pull
+          docker compose --profile full up -d
+
+      - name: Verify deployment
+        run: |
+          sleep 30
+          curl -f http://localhost:8000/health || exit 1
+          curl -f http://localhost:3001/health || exit 1
+          curl -f http://localhost:3002/health || exit 1

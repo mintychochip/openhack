@@ -1,0 +1,683 @@
+services:
+  # ================================
+  # Infrastructure Services
+  # ================================
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: openhack-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-openhack}
+      POSTGRES_USER: ${POSTGRES_USER:-openhack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openhack_pass}
+    command: >
+      postgres
+      -c shared_buffers=32MB
+      -c work_mem=2MB
+      -c effective_cache_size=64MB
+      -c maintenance_work_mem=16MB
+      -c max_connections=20
+      -c wal_buffers=4MB
+      -c checkpoint_completion_target=0.9
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=2
+      -c huge_pages=off
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./docker/postgres/002_performance_indexes.sql:/docker-entrypoint-initdb.d/indexes/002_performance_indexes.sql
+      - ./docker/postgres/auth:/docker-entrypoint-initdb.d/auth
+      - ./docker/postgres/core:/docker-entrypoint-initdb.d/core
+      - ./docker/postgres/mail:/docker-entrypoint-initdb.d/mail
+      - ./docker/postgres/judging:/docker-entrypoint-initdb.d/judging
+      - ./docker/postgres/leaderboard:/docker-entrypoint-initdb.d/leaderboard
+      - ./docker/postgres/notify:/docker-entrypoint-initdb.d/notify
+      - ./docker/postgres/ai:/docker-entrypoint-initdb.d/ai
+      - ./docker/postgres/analytics:/docker-entrypoint-initdb.d/analytics
+      - ./docker/postgres/sponsors:/docker-entrypoint-initdb.d/sponsors
+      - ./docker/postgres/discord-bot:/docker-entrypoint-initdb.d/discord-bot
+      - ./docker/postgres/media:/docker-entrypoint-initdb.d/media
+    networks:
+      - openhack-network
+    ports:
+      - "5432:5432"
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openhack} -d ${POSTGRES_DB:-openhack}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: openhack-pgbouncer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@postgres:5432/${POSTGRES_DB:-openhack}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-openhack}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-openhack_pass}
+      DB_NAME: ${POSTGRES_DB:-openhack}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 10
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+      SERVER_IDLE_TIMEOUT: 300
+      SERVER_LIFETIME: 1800
+      AUTH_TYPE: scram-sha-256
+    networks:
+      - openhack-network
+    deploy:
+      resources:
+        limits:
+          memory: 32M
+        reservations:
+          memory: 16M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U ${POSTGRES_USER:-openhack}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: openhack-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 64mb --maxmemory-policy allkeys-lru --save 60 1000 --save 300 100 --hz 1
+    volumes:
+      - redis_data:/data
+    networks:
+      - openhack-network
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 48M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    container_name: openhack-minio
+    restart: unless-stopped
+    profiles:
+      - full
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - openhack-network
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+        reservations:
+          memory: 48M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ================================
+  # Application Services
+  # ================================
+
+  auth-svc:
+    build:
+      context: .
+      dockerfile: services/auth-rust/Dockerfile
+      target: container
+    container_name: openhack-auth-svc
+    restart: unless-stopped
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@pgbouncer:5432/${POSTGRES_DB:-openhack}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${AUTH_JWT_SECRET:-openhack-jwt-secret-change-me-in-production-32}
+      JWT_EXPIRY: ${AUTH_JWT_EXPIRY:-15m}
+      REFRESH_TOKEN_EXPIRY: ${AUTH_REFRESH_TOKEN_EXPIRY:-7d}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      SERVICE_PORT: ${AUTH_PORT:-3001}
+      RUST_LOG: info
+    networks:
+      - openhack-network
+    ports:
+      - "${AUTH_PORT:-3001}:3001"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 24M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  core-svc:
+    build:
+      context: .
+      dockerfile: services/core-rust/Dockerfile
+      target: container
+    container_name: openhack-core-svc
+    restart: unless-stopped
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      auth-svc:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@pgbouncer:5432/${POSTGRES_DB:-openhack}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${AUTH_JWT_SECRET:-openhack-jwt-secret-change-me-in-production-32}
+      AUTH_SERVICE_URL: http://auth-svc:3001
+      MEDIA_SERVICE_URL: http://media-svc:3010
+      SERVICE_PORT: ${CORE_PORT:-3002}
+    networks:
+      - openhack-network
+    ports:
+      - "${CORE_PORT:-3002}:3002"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 24M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  mail-svc:
+    build:
+      context: .
+      dockerfile: services/mail-rust/Dockerfile
+      target: container
+    container_name: openhack-mail-svc
+    restart: unless-stopped
+    profiles:
+      - full
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      postfix:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@pgbouncer:5432/${POSTGRES_DB:-openhack}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      SMTP_HOST: ${SMTP_HOST:-postfix}
+      SMTP_PORT: ${SMTP_PORT:-25}
+      MAIL_FROM: ${MAIL_FROM:-noreply@openhack.local}
+      SERVICE_PORT: ${MAIL_PORT:-3005}
+      RUST_LOG: info
+    networks:
+      - openhack-network
+    ports:
+      - "${MAIL_PORT:-3005}:3005"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 48M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postfix:
+    image: juanluisbaptiste/postfix:latest
+    container_name: openhack-postfix
+    restart: unless-stopped
+    profiles:
+      - full
+    environment:
+      SERVER_HOSTNAME: ${OPENHACK_DOMAIN:-openhack.local}
+      MAILNAME: ${OPENHACK_DOMAIN:-localhost}
+      SMTP_SERVER: ${SMTP_HOST:-postfix}
+    volumes:
+      - ./docker/postfix/main.cf:/etc/postfix/main.cf
+    networks:
+      - openhack-network
+    ports:
+      - "25:25"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 16M
+
+  judging-svc:
+    build:
+      context: .
+      dockerfile: services/judging-rust/Dockerfile
+      target: container
+    container_name: openhack-judging-svc
+    restart: unless-stopped
+    profiles:
+      - full
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      auth-svc:
+        condition: service_healthy
+      core-svc:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@pgbouncer:5432/${POSTGRES_DB:-openhack}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      SERVICE_PORT: ${JUDGING_PORT:-3003}
+    networks:
+      - openhack-network
+    ports:
+      - "${JUDGING_PORT:-3003}:3003"
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+        reservations:
+          memory: 32M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  leaderboard-svc:
+    build:
+      context: .
+      dockerfile: services/leaderboard/Dockerfile
+      target: container
+    container_name: openhack-leaderboard-svc
+    restart: unless-stopped
+    profiles:
+      - full
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      core-svc:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@pgbouncer:5432/${POSTGRES_DB:-openhack}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${AUTH_JWT_SECRET:-openhack-jwt-secret-change-me-in-production-32}
+      RUST_LOG: info
+      SERVICE_PORT: ${LEADERBOARD_PORT:-3004}
+    networks:
+      - openhack-network
+    ports:
+      - "${LEADERBOARD_PORT:-3004}:3004"
+    deploy:
+      resources:
+        limits:
+          memory: 48M
+        reservations:
+          memory: 16M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  notify-svc:
+    build:
+      context: .
+      dockerfile: services/notify-rust/Dockerfile
+      target: container
+    container_name: openhack-notify-svc
+    restart: unless-stopped
+    profiles:
+      - full
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@pgbouncer:5432/${POSTGRES_DB:-openhack}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${AUTH_JWT_SECRET:-openhack-jwt-secret-change-me-in-production-32}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SERVICE_PORT: ${NOTIFY_PORT:-3006}
+    networks:
+      - openhack-network
+    ports:
+      - "${NOTIFY_PORT:-3006}:3006"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 24M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  ai-svc:
+    build:
+      context: .
+      dockerfile: services/ai-rust/Dockerfile
+      target: container
+    container_name: openhack-ai-svc
+    restart: unless-stopped
+    profiles:
+      - full
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@pgbouncer:5432/${POSTGRES_DB:-openhack}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4-turbo}
+      EMBEDDINGS_MODEL: ${EMBEDDINGS_MODEL:-text-embedding-ada-002}
+      RAG_TOP_K: ${RAG_TOP_K:-5}
+      RAG_SIMILARITY_THRESHOLD: ${RAG_SIMILARITY_THRESHOLD:-0.7}
+      SERVICE_PORT: ${AI_PORT:-3007}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 48M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3007/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    ports:
+      - "3007:3007"
+    networks:
+      - openhack-network
+
+  analytics-svc:
+    build:
+      context: .
+      dockerfile: services/analytics-rust/Dockerfile
+      target: container
+    container_name: openhack-analytics-svc
+    restart: unless-stopped
+    profiles:
+      - full
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@pgbouncer:5432/${POSTGRES_DB:-openhack}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      SERVICE_PORT: ${ANALYTICS_PORT:-3008}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 24M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3008/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    ports:
+      - "3008:3008"
+    networks:
+      - openhack-network
+
+  sponsors-svc:
+    build:
+      context: .
+      dockerfile: services/sponsors-rust/Dockerfile
+      target: container
+    container_name: openhack-sponsors-svc
+    restart: unless-stopped
+    profiles:
+      - full
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@pgbouncer:5432/${POSTGRES_DB:-openhack}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${AUTH_JWT_SECRET:-openhack-jwt-secret-change-me-in-production-32}
+      SERVICE_PORT: ${SPONSORS_PORT:-3009}
+    networks:
+      - openhack-network
+    ports:
+      - "3009:3009"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 24M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3009/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  media-svc:
+    build:
+      context: .
+      dockerfile: services/media-rust/Dockerfile
+      target: container
+    container_name: openhack-media-svc
+    restart: unless-stopped
+    profiles:
+      - full
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@pgbouncer:5432/${POSTGRES_DB:-openhack}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      STORAGE_PATH: ${STORAGE_PATH:-/app/uploads}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-openhack-media}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-104857600}
+      SERVICE_PORT: 3010
+      RUST_LOG: info
+    networks:
+      - openhack-network
+    ports:
+      - "3010:3010"
+    volumes:
+      - media-uploads:/app/uploads
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+        reservations:
+          memory: 32M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  discord-bot-svc:
+    build:
+      context: .
+      dockerfile: services/discord-bot-rust/Dockerfile
+      target: container
+    container_name: openhack-discord-bot-svc
+    restart: unless-stopped
+    profiles:
+      - full
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openhack}:${POSTGRES_PASSWORD:-openhack_pass}@pgbouncer:5432/${POSTGRES_DB:-openhack}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${AUTH_JWT_SECRET:-openhack-jwt-secret-change-me-in-production-32}
+      LAMBDA_INTERNAL_TOKEN: ${LAMBDA_INTERNAL_TOKEN:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID:-}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      DISCORD_PUBLIC_KEY: ${DISCORD_PUBLIC_KEY:-}
+      DISCORD_BOT_ENABLED: ${DISCORD_BOT_ENABLED:-true}
+      DISCORD_BOT_LOG_INTERACTIONS: ${DISCORD_BOT_LOG_INTERACTIONS:-true}
+      GATEWAY_URL: http://gateway-svc:8000
+      SERVICE_PORT: "3011"
+      RUST_LOG: info
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      gateway-svc:
+        condition: service_started
+    networks:
+      - openhack-network
+    ports:
+      - "3011:3011"
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+        reservations:
+          memory: 32M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3011/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ================================
+  # API Gateway + SSE (gateway-rust)
+  # ================================
+
+  gateway-svc:
+    build:
+      context: .
+      dockerfile: services/gateway-rust/Dockerfile
+      target: container
+    container_name: openhack-gateway-svc
+    restart: unless-stopped
+    depends_on:
+      auth-svc:
+        condition: service_healthy
+      core-svc:
+        condition: service_healthy
+    ports:
+      - "${GATEWAY_HTTP_PORT:-8000}:8000"
+    environment:
+      SERVICE_PORT: "8000"
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      RUST_LOG: info
+    networks:
+      - openhack-network
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+        reservations:
+          memory: 32M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ================================
+  # Web Frontend (Next.js)
+  # ================================
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_GATEWAY_URL: ${NEXT_PUBLIC_GATEWAY_URL:-http://localhost:8000}
+    container_name: openhack-web
+    restart: unless-stopped
+    depends_on:
+      gateway-svc:
+        condition: service_healthy
+    environment:
+      GATEWAY_INTERNAL_URL: http://gateway-svc:8000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+      NEXT_PUBLIC_GATEWAY_URL: ${NEXT_PUBLIC_GATEWAY_URL:-}
+    networks:
+      - openhack-network
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  openhack-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: openhack-postgres-data
+  redis_data:
+    name: openhack-redis-data
+  minio_data:
+    name: openhack-minio-data
+  media-uploads:
+    name: openhack-media-uploads

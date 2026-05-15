@@ -1,0 +1,7 @@
+# Postfix Header Checks
+# Block suspicious headers
+
+/^X-Mailer:.*Bulk/ REJECT Bulk mailer detected
+/^Subject:.*lottery/i REJECT Potential spam
+/^Subject:.*winner/i REJECT Potential spam
+/^From:.*@.*\.(ru|cn|br)$/ WARN Suspicious domain

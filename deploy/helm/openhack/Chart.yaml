@@ -1,0 +1,17 @@
+apiVersion: v2
+name: openhack
+description: A self-hosted hackathon management platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - hackathon
+  - event-management
+  - judging
+  - leaderboard
+home: https://github.com/opencodeai/openhack
+sources:
+  - https://github.com/opencodeai/openhack
+maintainers:
+  - name: OpenHack Team
+    email: team@openhack.dev

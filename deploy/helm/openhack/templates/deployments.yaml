@@ -1,0 +1,719 @@
+{{- $fullName := include "openhack.fullname" . -}}
+{{- $labels := include "openhack.labels" . -}}
+
+# Auth Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-auth-svc
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: auth-svc
+spec:
+  replicas: {{ .Values.authService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: auth-svc
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: auth-svc
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: auth-svc
+          image: "{{ .Values.authService.image.repository }}:{{ .Values.authService.image.tag }}"
+          imagePullPolicy: {{ .Values.authService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3001
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+            - secretRef:
+                name: {{ $fullName }}-secrets
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullName }}-secrets
+                  key: jwt-secret
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(DATABASE_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: REDIS_URL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.authService.resources | nindent 12 }}
+---
+# Core Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-core-svc
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: core-svc
+spec:
+  replicas: {{ .Values.coreService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: core-svc
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: core-svc
+    spec:
+      containers:
+        - name: core-svc
+          image: "{{ .Values.coreService.image.repository }}:{{ .Values.coreService.image.tag }}"
+          imagePullPolicy: {{ .Values.coreService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3002
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+            - secretRef:
+                name: {{ $fullName }}-secrets
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(DATABASE_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: REDIS_URL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.coreService.resources | nindent 12 }}
+---
+# Judging Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-judging-svc
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: judging-svc
+spec:
+  replicas: {{ .Values.judgingService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: judging-svc
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: judging-svc
+    spec:
+      containers:
+        - name: judging-svc
+          image: "{{ .Values.judgingService.image.repository }}:{{ .Values.judgingService.image.tag }}"
+          imagePullPolicy: {{ .Values.judgingService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3003
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(DATABASE_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: REDIS_URL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.judgingService.resources | nindent 12 }}
+---
+# Leaderboard Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-leaderboard-svc
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: leaderboard-svc
+spec:
+  replicas: {{ .Values.leaderboardService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: leaderboard-svc
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: leaderboard-svc
+    spec:
+      containers:
+        - name: leaderboard-svc
+          image: "{{ .Values.leaderboardService.image.repository }}:{{ .Values.leaderboardService.image.tag }}"
+          imagePullPolicy: {{ .Values.leaderboardService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3004
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(DATABASE_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: REDIS_URL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.leaderboardService.resources | nindent 12 }}
+---
+# Mail Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-mail-svc
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: mail-svc
+spec:
+  replicas: {{ .Values.mailService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: mail-svc
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: mail-svc
+    spec:
+      containers:
+        - name: mail-svc
+          image: "{{ .Values.mailService.image.repository }}:{{ .Values.mailService.image.tag }}"
+          imagePullPolicy: {{ .Values.mailService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3005
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(DATABASE_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: REDIS_URL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.mailService.resources | nindent 12 }}
+---
+# Notify Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-notify-svc
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: notify-svc
+spec:
+  replicas: {{ .Values.notifyService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: notify-svc
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: notify-svc
+    spec:
+      containers:
+        - name: notify-svc
+          image: "{{ .Values.notifyService.image.repository }}:{{ .Values.notifyService.image.tag }}"
+          imagePullPolicy: {{ .Values.notifyService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3006
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+            - secretRef:
+                name: {{ $fullName }}-secrets
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullName }}-secrets
+                  key: jwt-secret
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(DATABASE_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: REDIS_URL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.notifyService.resources | nindent 12 }}
+---
+# AI Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-ai-svc
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: ai-svc
+spec:
+  replicas: {{ .Values.aiService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: ai-svc
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: ai-svc
+    spec:
+      containers:
+        - name: ai-svc
+          image: "{{ .Values.aiService.image.repository }}:{{ .Values.aiService.image.tag }}"
+          imagePullPolicy: {{ .Values.aiService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3007
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+            - secretRef:
+                name: {{ $fullName }}-secrets
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(DATABASE_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: REDIS_URL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.aiService.resources | nindent 12 }}
+---
+# Analytics Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-analytics-svc
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: analytics-svc
+spec:
+  replicas: {{ .Values.analyticsService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: analytics-svc
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: analytics-svc
+    spec:
+      containers:
+        - name: analytics-svc
+          image: "{{ .Values.analyticsService.image.repository }}:{{ .Values.analyticsService.image.tag }}"
+          imagePullPolicy: {{ .Values.analyticsService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3008
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(DATABASE_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: REDIS_URL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.analyticsService.resources | nindent 12 }}
+---
+# Sponsors Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-sponsors-svc
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: sponsors-svc
+spec:
+  replicas: {{ .Values.sponsorsService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: sponsors-svc
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: sponsors-svc
+    spec:
+      containers:
+        - name: sponsors-svc
+          image: "{{ .Values.sponsorsService.image.repository }}:{{ .Values.sponsorsService.image.tag }}"
+          imagePullPolicy: {{ .Values.sponsorsService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3009
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+            - secretRef:
+                name: {{ $fullName }}-secrets
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullName }}-secrets
+                  key: jwt-secret
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(DATABASE_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: REDIS_URL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.sponsorsService.resources | nindent 12 }}
+---
+# Media Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-media-svc
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: media-svc
+spec:
+  replicas: {{ .Values.mediaService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: media-svc
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: media-svc
+    spec:
+      containers:
+        - name: media-svc
+          image: "{{ .Values.mediaService.image.repository }}:{{ .Values.mediaService.image.tag }}"
+          imagePullPolicy: {{ .Values.mediaService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3010
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(DATABASE_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: REDIS_URL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.mediaService.resources | nindent 12 }}
+---
+# Gateway Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-gateway
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: {{ .Values.gateway.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: gateway
+    spec:
+      containers:
+        - name: gateway
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+---
+# Discord Bot Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-discord-bot-svc
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: discord-bot-svc
+spec:
+  replicas: {{ .Values.discordBotService.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: discord-bot-svc
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: discord-bot-svc
+    spec:
+      containers:
+        - name: discord-bot-svc
+          image: "{{ .Values.discordBotService.image.repository }}:{{ .Values.discordBotService.image.tag | default .Values.global.imageTag | default "latest" }}"
+          imagePullPolicy: {{ .Values.discordBotService.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: http
+              containerPort: 3011
+              protocol: TCP
+          resources:
+            requests:
+              memory: {{ .Values.discordBotService.resources.requests.memory | default "128Mi" }}
+              cpu: {{ .Values.discordBotService.resources.requests.cpu | default "50m" }}
+            limits:
+              memory: {{ .Values.discordBotService.resources.limits.memory | default "256Mi" }}
+              cpu: {{ .Values.discordBotService.resources.limits.cpu | default "200m" }}
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-config
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+# Frontend Deployment
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-web
+  labels:
+    {{- $labels | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- $labels | nindent 6 }}
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        {{- $labels | nindent 8 }}
+        app.kubernetes.io/component: web
+    spec:
+      containers:
+        - name: web
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: NEXT_PUBLIC_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: NEXT_PUBLIC_API_URL
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+{{- end }}

@@ -1,0 +1,197 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openhack-gateway
+  namespace: openhack
+  labels:
+    app: openhack
+    component: gateway
+spec:
+  selector:
+    matchLabels:
+      app: openhack-gateway
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openhack-auth-svc
+  namespace: openhack
+  labels:
+    app: openhack
+    component: auth
+spec:
+  selector:
+    matchLabels:
+      app: openhack-auth-svc
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openhack-core-svc
+  namespace: openhack
+  labels:
+    app: openhack
+    component: core
+spec:
+  selector:
+    matchLabels:
+      app: openhack-core-svc
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openhack-judging-svc
+  namespace: openhack
+  labels:
+    app: openhack
+    component: judging
+spec:
+  selector:
+    matchLabels:
+      app: openhack-judging-svc
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openhack-leaderboard-svc
+  namespace: openhack
+  labels:
+    app: openhack
+    component: leaderboard
+spec:
+  selector:
+    matchLabels:
+      app: openhack-leaderboard-svc
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openhack-mail-svc
+  namespace: openhack
+  labels:
+    app: openhack
+    component: mail
+spec:
+  selector:
+    matchLabels:
+      app: openhack-mail-svc
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openhack-notify-svc
+  namespace: openhack
+  labels:
+    app: openhack
+    component: notify
+spec:
+  selector:
+    matchLabels:
+      app: openhack-notify-svc
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openhack-ai-svc
+  namespace: openhack
+  labels:
+    app: openhack
+    component: ai
+spec:
+  selector:
+    matchLabels:
+      app: openhack-ai-svc
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openhack-analytics-svc
+  namespace: openhack
+  labels:
+    app: openhack
+    component: analytics
+spec:
+  selector:
+    matchLabels:
+      app: openhack-analytics-svc
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openhack-sponsors-svc
+  namespace: openhack
+  labels:
+    app: openhack
+    component: sponsors
+spec:
+  selector:
+    matchLabels:
+      app: openhack-sponsors-svc
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: openhack-media-svc
+  namespace: openhack
+  labels:
+    app: openhack
+    component: media
+spec:
+  selector:
+    matchLabels:
+      app: openhack-media-svc
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

@@ -1,0 +1,212 @@
+# OWASP ZAP Security Scan Rules
+# https://www.zaproxy.org/docs/alerts/
+
+# Rule ID | Level | Enabled | Description
+# Format: <id>	<level>	<enabled>	<description>
+
+# Informational - Disabled
+10015	0	false	Incomplete or no cache-control header
+10017	0	false	Cross-Domain JavaScript source file inclusion
+10020	0	false	X-Frame-Options header not set
+10021	0	false	X-Content-Type-Options header missing
+10023	0	false	Information disclosure - debug error messages
+10024	0	false	Information disclosure - sensitive data in URL
+10025	0	false	Information disclosure - data in URL comment
+10027	0	false	Information disclosure - suspicious comments
+10028	0	false	Open redirect
+10029	0	false	Cookie poisoning
+10030	0	false	User controllable charset
+10031	0	false	User controllable HTML element attribute
+10032	0	false	View state
+10035	0	false	Strict-Transport-Security header not set
+10036	0	false	HTTP Server Response Header
+10037	0	false	Server leaks information via "X-Powered-By" header
+10038	0	false	Content Security Policy (CSP) header not set
+10039	0	false	X-Backend-Server header information leak
+10040	0	false	Secure Pages Include Mixed Content
+10094	0	false	Base64 Disclosure
+10095	0	false	Backup File Disclosure
+10096	0	false	Timestamp Disclosure
+10097	0	false	Hash Disclosure
+10098	0	false	Cross-Domain Misconfiguration
+10099	0	false	Source Code Disclosure - SVN
+10101	0	false	Source Code Disclosure - GIT
+10103	0	false	Image location and camera details (EXIF)
+10104	0	false	User Agent Fuzzer
+10105	0	false	Weak Authentication Method
+10106	0	false	HTTP Only Site
+10107	0	false	SMTP Sinkhole
+10108	0	false	Reverse Tabnabbing
+10109	0	false	Modern Web Application
+
+# Low - Enabled
+0	1	true	Directory Browsing
+10010	1	true	Cookie No HttpOnly Flag
+10011	1	true	Cookie Without Secure Flag
+10012	1	true	Password Autocomplete in Browser
+10016	1	true	Web Browser XSS Protection Not Enabled
+10019	1	true	Content-Type header missing
+10020	1	true	X-Frame-Options header not set
+10021	1	true	X-Content-Type-Options header missing
+10035	1	true	Strict-Transport-Security header not set
+10036	1	true	HTTP Server Response Header
+10037	1	true	Server leaks information via "X-Powered-By" header
+10038	1	true	Content Security Policy (CSP) header not set
+10054	1	true	Cookie without SameSite attribute
+10055	1	true	CSP: Wildcard Directive
+10056	1	true	X-Debug-Token Information Leak
+10057	1	true	Username Hash Found
+10058	1	true	GET for POST
+10061	1	true	OS Command Injection
+10062	1	true	PII Disclosure
+10066	1	true	HTTP Parameter Override
+10079	1	true	Clickjacking: X-Frame-Options
+10082	1	true	Social Network Discovery
+10083	1	true	Cross Site Request Forgery
+10084	1	true	Re-examine Cache-control Directives
+10085	1	true	Heartbleed OpenSSL Vulnerability
+10086	1	true	SSL/TLS: Weak Cipher Suite Used
+10087	1	true	SSL/TLS: Obsolete TLS Protocol (TLS 1.0)
+10088	1	true	Directory Indexing
+10089	1	true	External Redirect
+10090	1	true	Cross-Site Websocket Hijacking
+10091	1	true	SOAP Action
+10092	1	true	Java Serialization Object
+10093	1	true	XML External Entity Attack
+10094	1	true	Base64 Disclosure
+10095	1	true	Backup File Disclosure
+10096	1	true	Timestamp Disclosure
+10097	1	true	Hash Disclosure
+10101	1	true	Source Code Disclosure - GIT
+10104	1	true	User Agent Fuzzer
+10105	1	true	Weak Authentication Method
+10106	1	true	HTTP Only Site
+
+# Medium - Enabled
+10010	2	true	Cookie No HttpOnly Flag
+10011	2	true	Cookie Without Secure Flag
+10012	2	true	Password Autocomplete in Browser
+10016	2	true	Web Browser XSS Protection Not Enabled
+10020	2	true	X-Frame-Options header not set
+10021	2	true	X-Content-Type-Options header missing
+10035	2	true	Strict-Transport-Security header not set
+10038	2	true	Content Security Policy (CSP) header not set
+10054	2	true	Cookie without SameSite attribute
+10055	2	true	CSP: Wildcard Directive
+10056	2	true	X-Debug-Token Information Leak
+10057	2	true	Username Hash Found
+10058	2	true	GET for POST
+10061	2	true	OS Command Injection
+10066	2	true	HTTP Parameter Override
+10079	2	true	Clickjacking: X-Frame-Options
+10082	2	true	Social Network Discovery
+10083	2	true	Cross Site Request Forgery
+10085	2	true	Heartbleed OpenSSL Vulnerability
+10086	2	true	SSL/TLS: Weak Cipher Suite Used
+10087	2	true	SSL/TLS: Obsolete TLS Protocol (TLS 1.0)
+10089	2	true	External Redirect
+10090	2	true	Cross-Site Websocket Hijacking
+10091	2	true	SOAP Action
+10092	2	true	Java Serialization Object
+10093	2	true	XML External Entity Attack
+10104	2	true	User Agent Fuzzer
+10105	2	true	Weak Authentication Method
+
+# High - Enabled
+10001	3	true	HSTS Policy Missing
+10003	3	true	Session ID in URL Rewrite
+10013	3	true	Images Leaked via Cross-Site Scripting
+10014	3	true	Forms Submitted Over HTTP
+10015	3	true	Incomplete or no cache-control header
+10017	3	true	Cross-Domain JavaScript source file inclusion
+10018	3	true	SQL Injection
+10019	3	true	Content-Type header missing
+10020	3	true	X-Frame-Options header not set
+10021	3	true	X-Content-Type-Options header missing
+10022	3	true	SQL Injection - Hypenated
+10023	3	true	Information disclosure - debug error messages
+10024	3	true	Information disclosure - sensitive data in URL
+10025	3	true	Information disclosure - data in URL comment
+10026	3	true	HTTP response header splitting
+10027	3	true	Information disclosure - suspicious comments
+10028	3	true	Open redirect
+10029	3	true	Cookie poisoning
+10030	3	true	User controllable charset
+10031	3	true	User controllable HTML element attribute
+10032	3	true	View state
+10033	3	true	Directory Browsing
+10034	3	true	Heartbleed OpenSSL Vulnerability
+10035	3	true	Strict-Transport-Security header not set
+10036	3	true	HTTP Server Response Header
+10037	3	true	Server leaks information via "X-Powered-By" header
+10038	3	true	Content Security Policy (CSP) header not set
+10039	3	true	X-Backend-Server header information leak
+10040	3	true	Secure Pages Include Mixed Content
+10041	3	true	HTTP to HTTPS Insecure Transition in Form Post
+10042	3	true	HTTPS to HTTP Insecure Transition in Form Post
+10043	3	true	User Controllable JavaScript Event (XSS)
+10044	3	true	Big Redirect Detected (Large Data Transfer)
+10045	3	true	Source Code Disclosure - /WEB-INF folder
+10046	3	true	SQL Injection - SQLite
+10047	3	true	HTTPS Content Available via HTTP
+10048	3	true	Remote OS Command Injection
+10049	3	true	Tomcat Source Servlet
+10050	3	true	Retrieved from Cache
+10051	3	true	Path Traversal
+10052	3	true	XSLT Injection
+10053	3	true	Attribute Autocomplete
+10054	3	true	Cookie without SameSite attribute
+10055	3	true	CSP: Wildcard Directive
+10056	3	true	X-Debug-Token Information Leak
+10057	3	true	Username Hash Found
+10058	3	true	GET for POST
+10060	3	true	Sitemap
+10061	3	true	OS Command Injection
+10062	3	true	PII Disclosure
+10063	3	true	Permissions/ClearText
+10064	3	true	Static code analysis
+10065	3	true	Information Disclosure: Sensitive Data in Clear Text
+10066	3	true	HTTP Parameter Override
+10067	3	true	Directory Indexing
+10068	3	true	Connection: Close Header Missing
+10069	3	true	Content-Type Options Missing
+10070	3	true	HTTP Parameter Pollution
+10071	3	true	Missing Anti-clickjacking Header
+10072	3	true	Private IP Disclosure
+10073	3	true	Secure Page Information Leak
+10074	3	true	Password Field Cleartext Submission
+10075	3	true	Email Disclosure
+10076	3	true	LDAP Injection
+10077	3	true	SQL Injection - MySQL
+10078	3	true	SQL Injection - PostgreSQL
+10079	3	true	Clickjacking: X-Frame-Options
+10080	3	true	Content-Security-Policy Missing
+10081	3	true	Cross-Site Scripting (Reflected)
+10082	3	true	Social Network Discovery
+10083	3	true	Cross Site Request Forgery
+10084	3	true	Re-examine Cache-control Directives
+10085	3	true	Heartbleed OpenSSL Vulnerability
+10086	3	true	SSL/TLS: Weak Cipher Suite Used
+10087	3	true	SSL/TLS: Obsolete TLS Protocol (TLS 1.0)
+10088	3	true	Directory Indexing
+10089	3	true	External Redirect
+10090	3	true	Cross-Site Websocket Hijacking
+10091	3	true	SOAP Action
+10092	3	true	Java Serialization Object
+10093	3	true	XML External Entity Attack
+10094	3	true	Base64 Disclosure
+10095	3	true	Backup File Disclosure
+10096	3	true	Timestamp Disclosure
+10097	3	true	Hash Disclosure
+10098	3	true	Cross-Domain Misconfiguration
+10099	3	true	Source Code Disclosure - SVN
+10100	3	true	Known Exploitable Vulnerability
+10101	3	true	Source Code Disclosure - GIT
+10102	3	true	Java Serialization Object
+10103	3	true	Image location and camera details (EXIF)
+10104	3	true	User Agent Fuzzer
+10105	3	true	Weak Authentication Method
+10106	3	true	HTTP Only Site
+10107	3	true	SMTP Sinkhole
+10108	3	true	Reverse Tabnabbing
+10109	3	true	Modern Web Application

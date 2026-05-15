@@ -1,0 +1,70 @@
+version = "1.0"
+
+[meta]
+project_name = "openhack"
+environment = "development"
+last_updated = ""
+
+[deploy_target]
+current = "docker-compose"
+
+[services.auth]
+target = "docker-compose"
+endpoint = "http://localhost:3001"
+image_tag = "latest"
+
+[services.core]
+target = "docker-compose"
+endpoint = "http://localhost:3002"
+image_tag = "latest"
+
+[services.gateway]
+target = "docker-compose"
+endpoint = "http://localhost:8000"
+image_tag = "latest"
+
+[services.judging]
+target = "docker-compose"
+endpoint = "http://localhost:3003"
+image_tag = "latest"
+
+[services.leaderboard]
+target = "docker-compose"
+endpoint = "http://localhost:3004"
+image_tag = "latest"
+
+[services.mail]
+target = "docker-compose"
+endpoint = "http://localhost:3005"
+image_tag = "latest"
+
+[services.notify]
+target = "docker-compose"
+endpoint = "http://localhost:3006"
+image_tag = "latest"
+
+[services.ai]
+target = "docker-compose"
+endpoint = "http://localhost:3007"
+image_tag = "latest"
+
+[services.analytics]
+target = "docker-compose"
+endpoint = "http://localhost:3008"
+image_tag = "latest"
+
+[services.sponsors]
+target = "docker-compose"
+endpoint = "http://localhost:3009"
+image_tag = "latest"
+
+[services.media]
+target = "docker-compose"
+endpoint = "http://localhost:3010"
+image_tag = "latest"
+
+[infrastructure]
+db_endpoint = ""
+redis_url = ""
+s3_bucket = ""
+api_gateway_url = ""

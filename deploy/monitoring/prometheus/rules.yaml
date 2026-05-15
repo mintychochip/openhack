@@ -1,0 +1,191 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: openhack-alerts
+  namespace: openhack
+  labels:
+    app: openhack
+    prometheus: main
+spec:
+  groups:
+    - name: openhack-critical
+      interval: 30s
+      rules:
+        - alert: ServiceDown
+          expr: up{job=~"openhack-.*"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Service {{ $labels.job }} is down"
+            description: "{{ $labels.job }} instance {{ $labels.instance }} has been down for more than 2 minutes."
+            runbook_url: "https://github.com/opencodeai/openhack/blob/main/docs/runbooks/incident-response.md"
+            
+        - alert: DatabaseDown
+          expr: pg_up == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "PostgreSQL database is down"
+            description: "Database has been unreachable for more than 1 minute."
+            runbook_url: "https://github.com/opencodeai/openhack/blob/main/docs/runbooks/incident-response.md"
+            
+        - alert: RedisDown
+          expr: redis_up == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Redis is down"
+            description: "Redis has been unreachable for more than 1 minute."
+            runbook_url: "https://github.com/opencodeai/openhack/blob/main/docs/runbooks/incident-response.md"
+            
+        - alert: HighErrorRate
+          expr: |
+            sum(rate(http_requests_total{status=~"5..", job=~"openhack-.*"}[5m])) 
+            / sum(rate(http_requests_total{job=~"openhack-.*"}[5m])) * 100 > 10
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High error rate detected"
+            description: "Error rate is {{ $value }}% (threshold: 10%)"
+            runbook_url: "https://github.com/opencodeai/openhack/blob/main/docs/runbooks/incident-response.md"
+            
+        - alert: DiskFull
+          expr: node_filesystem_avail_bytes / node_filesystem_size_bytes * 100 < 5
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Disk is almost full"
+            description: "Available disk space is {{ $value }}% (threshold: 5%)"
+            runbook_url: "https://github.com/opencodeai/openhack/blob/main/docs/runbooks/maintenance.md"
+            
+        - alert: BackupFailed
+          expr: backup_success == 0
+          for: 24h
+          labels:
+            severity: critical
+          annotations:
+            summary: "Backup has not run successfully"
+            description: "No successful backup in the last 24 hours."
+            runbook_url: "https://github.com/opencodeai/openhack/blob/main/docs/runbooks/maintenance.md"
+
+    - name: openhack-warning
+      interval: 30s
+      rules:
+        - alert: HighMemory
+          expr: |
+            container_memory_usage_bytes / container_spec_memory_limit_bytes * 100 > 80
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High memory usage"
+            description: "Memory usage is {{ $value }}% (threshold: 80%)"
+            
+        - alert: HighCPU
+          expr: |
+            rate(container_cpu_usage_seconds_total[5m]) * 100 > 80
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High CPU usage"
+            description: "CPU usage is {{ $value }}% (threshold: 80%)"
+            
+        - alert: SlowQueries
+          expr: pg_stat_statements_seconds{query=~".*"} > 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Slow queries detected"
+            description: "Queries taking longer than 1 second for 10 minutes"
+            
+        - alert: CacheHitRateLow
+          expr: |
+            pg_stat_database_blks_hit / (pg_stat_database_blks_hit + pg_stat_database_blks_read) * 100 < 80
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Low cache hit rate"
+            description: "Database cache hit rate is {{ $value }}% (threshold: 80%)"
+            
+        - alert: QueueBacklog
+          expr: redis_key_value{key=~"queue:.*"} > 1000
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Queue backlog detected"
+            description: "Queue depth is {{ $value }} (threshold: 1000)"
+            
+        - alert: RedisMemoryHigh
+          expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 80
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Redis memory usage is high"
+            description: "Redis memory usage is {{ $value }}% of max (threshold: 80%)"
+            
+        - alert: RedisEvictionsIncreasing
+          expr: increase(redis_evicted_keys_total[5m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Redis is evicting keys"
+            description: "Redis has evicted {{ $value }} keys in the last 5 minutes, indicating memory pressure"
+            
+        - alert: RedisOOM
+          expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 95
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Redis near OOM"
+            description: "Redis memory usage is {{ $value }}% of max (threshold: 95%). OOM kills imminent."
+            
+        - alert: CertificateExpiring
+          expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 30
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "SSL certificate expiring soon"
+            description: "SSL certificate expires in {{ $value | humanizeDuration }} (threshold: 30 days)"
+
+    - name: openhack-info
+      interval: 30s
+      rules:
+        - alert: DiskUsageHigh
+          expr: node_filesystem_avail_bytes / node_filesystem_size_bytes * 100 < 30
+          for: 1h
+          labels:
+            severity: info
+          annotations:
+            summary: "Disk usage above 70%"
+            description: "Available disk space is {{ $value }}%"
+            
+        - alert: BackupNotRun
+          expr: time() - backup_last_success_timestamp > 86400
+          for: 1h
+          labels:
+            severity: info
+          annotations:
+            summary: "Backup has not run in 24 hours"
+            description: "Last successful backup was {{ $value | humanizeDuration }} ago"
+            
+        - alert: NewVersionAvailable
+          expr: kube_deployment_status_updated_replicas != kube_deployment_spec_replicas
+          for: 1h
+          labels:
+            severity: info
+          annotations:
+            summary: "Deployment update available"
+            description: "Deployment {{ $labels.deployment }} has an update pending"

@@ -1,0 +1,30 @@
+[package]
+name = "gateway-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+openhack-common = { workspace = true }
+tikv-jemallocator = { version = "0.6", optional = true }
+actix-web = { workspace = true }
+actix-rt = { workspace = true }
+actix-cors = { workspace = true }
+redis = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }
+dotenvy = { workspace = true }
+env_logger = { workspace = true }
+log = { workspace = true }
+futures-util = "0.3"
+actix-web-lab = "0.20"
+awc = { version = "3", features = ["rustls-0_23"] }
+rustls = "0.23"
+
+[features]
+jemalloc = ["tikv-jemallocator"]
+
+[dev-dependencies]
+tokio = { workspace = true }

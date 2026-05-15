@@ -1,0 +1,36 @@
+[package]
+name = "mail-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+openhack-common = { workspace = true }
+tikv-jemallocator = { version = "0.6", optional = true }
+actix-web = { workspace = true }
+actix-rt = { workspace = true }
+actix-cors = { workspace = true }
+sqlx = { workspace = true }
+redis = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+dotenvy = { workspace = true }
+env_logger = { workspace = true }
+log = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+actix-multipart = "0.6"
+tera = "1"
+lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
+reqwest = { version = "0.12", features = ["json", "multipart"] }
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.21"
+futures-util = "0.3"
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[features]
+jemalloc = ["tikv-jemallocator"]

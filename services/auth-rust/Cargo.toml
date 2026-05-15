@@ -1,0 +1,39 @@
+[package]
+name = "auth-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+openhack-common = { workspace = true }
+tikv-jemallocator = { version = "0.6", optional = true }
+actix-web = { workspace = true }
+actix-rt = { workspace = true }
+sqlx = { workspace = true }
+redis = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }
+dotenvy = { workspace = true }
+env_logger = { workspace = true }
+log = { workspace = true }
+jsonwebtoken = { workspace = true }
+thiserror = { workspace = true }
+argon2 = "0.5"
+totp-rs = "5"
+oauth2 = "4"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+actix-cors = { workspace = true }
+base64 = "0.22"
+rand = "0.8"
+sha2 = "0.10"
+hmac = "0.12"
+hex = "0.4"
+urlencoding = "2.1.3"
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[features]
+jemalloc = ["tikv-jemallocator"]

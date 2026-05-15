@@ -1,0 +1,30 @@
+[package]
+name = "judging-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+openhack-common = { workspace = true }
+tikv-jemallocator = { version = "0.6", optional = true }
+actix-web = { workspace = true }
+actix-rt = { workspace = true }
+actix-cors = { workspace = true }
+sqlx = { workspace = true }
+redis = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+dotenvy = { workspace = true }
+env_logger = { workspace = true }
+log = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+rust_decimal = "1"
+rand = "0.8"
+
+[features]
+jemalloc = ["tikv-jemallocator"]
+
+[dev-dependencies]
+tokio = { workspace = true }

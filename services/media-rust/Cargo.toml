@@ -1,0 +1,32 @@
+[package]
+name = "media-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+openhack-common = { workspace = true }
+tikv-jemallocator = { version = "0.6", optional = true }
+actix-web = { workspace = true }
+actix-rt = { workspace = true }
+actix-cors = { workspace = true }
+sqlx = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }
+dotenvy = { workspace = true }
+env_logger = { workspace = true }
+log = { workspace = true }
+thiserror = { workspace = true }
+actix-multipart = "0.6"
+rust-s3 = "0.33"
+futures-util = "0.3"
+async-trait = "0.1"
+
+[features]
+jemalloc = ["tikv-jemallocator"]
+
+[dev-dependencies]
+tokio = { workspace = true }
+tokio-test = "0.4"

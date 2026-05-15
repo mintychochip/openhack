@@ -1,0 +1,221 @@
+# Development overrides for OpenHack
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+services:
+  # ================================
+  # Infrastructure Services (Dev)
+  # ================================
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  pgbouncer:
+    ports:
+      - "6432:6432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  # ================================
+  # Application Services (Dev)
+  # ================================
+
+  auth-svc:
+    build:
+      context: .
+      dockerfile: services/auth-rust/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "${AUTH_PORT:-3001}:3001"
+
+  core-svc:
+    build:
+      context: .
+      dockerfile: services/core-rust/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "${CORE_PORT:-3002}:3002"
+
+  gateway-svc:
+    build:
+      context: .
+      dockerfile: services/gateway-rust/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+      CORS_ORIGIN: "*"
+    ports:
+      - "${GATEWAY_HTTP_PORT:-8000}:8000"
+
+  judging-svc:
+    build:
+      context: .
+      dockerfile: services/judging-rust/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "${JUDGING_PORT:-3003}:3003"
+
+  leaderboard-svc:
+    build:
+      context: .
+      dockerfile: services/leaderboard/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "${LEADERBOARD_PORT:-3004}:3004"
+
+  mail-svc:
+    build:
+      context: .
+      dockerfile: services/mail-rust/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "${MAIL_PORT:-3005}:3005"
+
+  notify-svc:
+    build:
+      context: .
+      dockerfile: services/notify-rust/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "${NOTIFY_PORT:-3006}:3006"
+
+  ai-svc:
+    build:
+      context: .
+      dockerfile: services/ai-rust/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "${AI_PORT:-3007}:3007"
+
+  analytics-svc:
+    build:
+      context: .
+      dockerfile: services/analytics-rust/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "${ANALYTICS_PORT:-3008}:3008"
+
+  sponsors-svc:
+    build:
+      context: .
+      dockerfile: services/sponsors-rust/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "${SPONSORS_PORT:-3009}:3009"
+
+  media-svc:
+    build:
+      context: .
+      dockerfile: services/media-rust/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "${MEDIA_PORT:-3010}:3010"
+
+  discord-bot-svc:
+    build:
+      context: .
+      dockerfile: services/discord-bot-rust/Dockerfile
+      target: container
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "3011:3011"
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: runner
+    environment:
+      GATEWAY_INTERNAL_URL: http://gateway-svc:8000
+      NEXT_PUBLIC_API_URL: /api
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+  # ================================
+  # Development Tools
+  # ================================
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: openhack-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@openhack.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json
+    networks:
+      - openhack-network
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: openhack-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+      HTTP_USER: ${REDIS_COMMANDER_USER:-admin}
+      HTTP_PASSWORD: ${REDIS_COMMANDER_PASSWORD:-admin}
+    networks:
+      - openhack-network
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: openhack-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - openhack-network
+
+networks:
+  openhack-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: openhack-postgres-data
+  redis_data:
+    name: openhack-redis-data
+  minio_data:
+    name: openhack-minio-data
+  pgadmin_data:
+    name: openhack-pgadmin-data

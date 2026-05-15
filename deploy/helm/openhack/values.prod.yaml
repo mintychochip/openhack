@@ -1,0 +1,247 @@
+# Production Helm Values
+# Optimized for production deployments with HA, resource limits, and security
+
+# Global settings
+global:
+  domain: hackathon.example.com
+  tls:
+    enabled: true
+    issuer: letsencrypt-prod
+  imageRegistry: ghcr.io/opencodeai
+  imagePullSecrets:
+    - name: ghcr-secret
+
+# Auth Service
+authService:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+  config:
+    jwtSecret: ""
+    jwtExpiry: "15m"
+    refreshTokenExpiry: "7d"
+
+# Core Service
+coreService:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+# Judging Service
+judgingService:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+# Leaderboard Service
+leaderboardService:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 300m
+
+# Mail Service
+mailService:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 200m
+    limits:
+      memory: 512Mi
+      cpu: 400m
+  config:
+    smtp:
+      host: smtp.example.com
+      port: 587
+      user: ""
+      password: ""
+
+# Notification Service
+notifyService:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+
+# AI Service
+aiService:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 500m
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+
+# Analytics Service
+analyticsService:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 200m
+    limits:
+      memory: 512Mi
+      cpu: 400m
+
+# Sponsors Service
+sponsorsService:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+
+# Media Service
+mediaService:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 200m
+    limits:
+      memory: 512Mi
+      cpu: 400m
+  storage:
+    provider: minio
+    s3:
+      bucket: "openhack-media"
+
+# Discord Bot Service
+discordBotService:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+
+# API Gateway
+gateway:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+# Frontend (Next.js)
+frontend:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+# PostgreSQL (Production)
+postgresql:
+  enabled: true
+  primary:
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 500m
+      limits:
+        memory: 2Gi
+        cpu: 1000m
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: gp3
+
+# Redis (Production)
+redis:
+  enabled: true
+  master:
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+      limits:
+        memory: 512Mi
+        cpu: 300m
+    persistence:
+      enabled: true
+      size: 5Gi
+
+# MinIO (Object Storage)
+minio:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: gp3
+
+# Monitoring
+monitoring:
+  enabled: false
+
+# Ingress
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - secretName: openhack-tls
+      hosts:
+        - hackathon.example.com
+        - api.hackathon.example.com
+
+# Security settings
+security:
+  networkPolicies:
+    enabled: true
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
