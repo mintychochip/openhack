@@ -28,7 +28,7 @@ actix-cors = { workspace = true }
 base64 = "0.22"
 rand = "0.8"
 sha2 = "0.10"
-hmac = "0.12"
+hmac = "0.13"
 hex = "0.4"
 urlencoding = "2.1.3"
 utoipa = { workspace = true }

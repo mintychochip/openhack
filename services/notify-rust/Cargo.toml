@@ -22,7 +22,7 @@ tokio = { workspace = true }
 thiserror = { workspace = true }
 jsonwebtoken = { workspace = true }
 sha2 = "0.10"
-hmac = "0.12"
+hmac = "0.13"
 hex = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 futures-util = "0.3"
