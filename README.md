@@ -14,10 +14,10 @@ A modern hackathon management platform with microservices architecture.
 
 ```bash
 # One-command install
-curl -fsSL https://raw.githubusercontent.com/openhack/openhack/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/mintychochip/openhack/main/scripts/install.sh | bash
 
 # Or manual install
-git clone https://github.com/openhack/openhack.git
+git clone https://github.com/mintychochip/openhack.git
 cd openhack
 cp .env.example .env
 ./scripts/install.sh
@@ -27,7 +27,7 @@ cp .env.example .env
 
 ```bash
 # Start with development tools (pgadmin, redis-commander, mailhog)
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 # Access development tools:
 # - pgAdmin: http://localhost:5050 (admin/admin)
@@ -38,53 +38,72 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ### Production Mode
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ## Services
 
 | Service | Port | Description |
 |---------|------|-------------|
-| Gateway | 8000, 8443 | Kong API Gateway |
+| Gateway | 8000 | Rust API Gateway + SSE |
 | Auth Service | 3001 | Authentication & OAuth |
-| Core Service | 3002 | Teams, Projects, Challenges |
-| Mail Service | 3005 | Email & Notifications |
+| Core Service | 3002 | Teams, Projects, Events, Hackathon Config |
+| Judging Service | 3003 | Rubrics, Scoring, Phases |
+| Leaderboard Service | 3004 | Rankings, Public Voting |
+| Mail Service | 3005 | Email & Templates |
+| Notify Service | 3006 | Push Notifications |
+| AI Service | 3007 | AI Assistant |
+| Analytics Service | 3008 | Analytics & Certificates |
+| Sponsors Service | 3009 | Sponsor Booths, Prizes |
+| Media Service | 3010 | File Uploads |
+| Discord Bot Service | 3011 | Discord Integration |
 | PostgreSQL | 5432 | Primary Database |
-| Redis | 6379 | Cache & Sessions |
+| Redis | 6379 | Cache, Sessions, SSE Pub/Sub |
 | MinIO | 9000, 9001 | File Storage |
+| PgBouncer | 5432 | Connection Pooling |
+| Postfix | 25 | Mail Relay |
 
 ## API Endpoints
 
-All APIs are exposed through the Kong Gateway:
+All APIs are exposed through the Rust Gateway:
 
 - `http://localhost:8000/api/auth` - Authentication endpoints
 - `http://localhost:8000/api/core` - Core platform endpoints
+- `http://localhost:8000/api/judging` - Judging endpoints
+- `http://localhost:8000/api/leaderboard` - Leaderboard endpoints
 - `http://localhost:8000/api/mail` - Mail endpoints
-- `http://localhost:8000/health` - Health check
+- `http://localhost:8000/api/notify` - Notification endpoints
+- `http://localhost:8000/api/ai` - AI endpoints
+- `http://localhost:8000/api/analytics` - Analytics endpoints
+- `http://localhost:8000/api/sponsors` - Sponsor endpoints
+- `http://localhost:8000/api/media` - File upload endpoints
+- `http://localhost:8000/api/discord-bot` - Discord bot endpoints
+- `http://localhost:8000/api/events/stream` - SSE real-time events
+- `http://localhost:8000/health` - Composite health check
 
 ## Common Commands
 
 ```bash
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # View specific service logs
-docker-compose logs -f auth-svc
+docker compose logs -f auth-svc
 
 # Run migrations
-./scripts/migrate.sh
+docker compose run --rm auth-svc cargo run --bin migrate
 
 # Backup database
 ./scripts/backup.sh
 
 # Restart a service
-docker-compose restart auth-svc
+docker compose restart auth-svc
 
 # Rebuild services
-docker-compose build
+docker compose build
 
 # Clean up
-docker-compose down -v
+docker compose down -v
 ```
 
 ## Configuration
@@ -109,18 +128,23 @@ cp .env.example .env
 └──────┬──────┘
        │
 ┌──────▼──────┐
-│   Kong      │ Port 8000/8443
+│   Web App   │ Port 3000 (Next.js)
+│   (Next.js) │
+└──────┬──────┘
+       │
+┌──────▼──────┐
+│   Rust      │ Port 8000
 │   Gateway   │
 └──────┬──────┘
        │
-┌──────┼──────┬─────────────┐
-│      │      │             │
-┌──────▼─┐ ┌──▼──────┐ ┌───▼────┐
-│ Auth   │ │ Core    │ │ Mail   │
-│ :3001  │ │ :3002   │ │ :3005  │
-└────┬───┘ └───┬─────┘ └───┬────┘
-     │         │           │
-     └────┬────┴───────────┘
+┌──────┼──────┬─────────────┬──────────────┬──────────┐
+│      │      │             │              │          │
+┌──────▼─┐ ┌──▼──────┐ ┌───▼────┐ ┌──────▼────┐ ┌──▼──────┐
+│ Auth   │ │ Core    │ │ Judging│ │ Leaderboard│ │ Mail    │
+│ :3001  │ │ :3002   │ │ :3003  │ │ :3004      │ │ :3005   │
+└────┬───┘ └───┬─────┘ └───┬────┘ └─────┬─────┘ └───┬─────┘
+     │         │           │            │           │
+     └────┬────┴───────────┴────────────┴───────────┘
           │
     ┌─────▼─────┐
     │ PostgreSQL│ Port 5432
@@ -129,6 +153,20 @@ cp .env.example .env
     └───────────┘
 ```
 
+## Theming
+
+OpenHack supports zero-code theming via the admin dashboard:
+
+- **32 DaisyUI presets** (light, dark, cyberpunk, nord, etc.)
+- **Custom colors** with 9 semantic color pickers
+- **Typography** with 9 curated Google Fonts presets or custom CDN links
+- **Custom CSS** textarea for power users
+- **Dynamic branding** (name, tagline, logo)
+
+Edit at: `http://localhost:3000/dashboard/admin/theme` (admin access required)
+
+Theme config is stored in `core.hackathon_config` and applied instantly without rebuild.
+
 ## Development
 
 ### Adding a New Service
@@ -136,22 +174,17 @@ cp .env.example .env
 1. Create service directory in `services/`
 2. Add Dockerfile
 3. Add service to `docker-compose.yml`
-4. Add route to `docker/kong/kong.yml`
+4. Add route to `services/gateway-rust/src/routes/proxy.rs`
 5. Update `.env.example`
 
 ### Database Migrations
 
-Each service manages its own migrations:
+Each service manages its own migrations in `docker/postgres/<service>/`:
 
 ```bash
-# Auth service
-docker-compose run --rm auth-svc npm run db:migrate
-
-# Core service
-docker-compose run --rm core-svc npm run db:migrate
-
-# Mail service
-docker-compose run --rm mail-svc python -m db.migrate
+# Migrations run automatically on container startup
+# Or apply manually:
+docker exec openhack-postgres psql -U openhack -d openhack -f /path/to/migration.sql
 ```
 
 ## Troubleshooting
@@ -160,33 +193,36 @@ docker-compose run --rm mail-svc python -m db.migrate
 
 ```bash
 # Check logs
-docker-compose logs
+docker compose logs
 
 # Verify configuration
-docker-compose config
+docker compose config
 
 # Rebuild images
-docker-compose build --no-cache
+docker compose build --no-cache
 ```
 
 ### Database connection issues
 
 ```bash
 # Check PostgreSQL health
-docker-compose exec postgres pg_isready
+docker compose exec postgres pg_isready
 
 # View database logs
-docker-compose logs postgres
+docker compose logs postgres
 ```
 
 ### Gateway routing issues
 
 ```bash
-# Test Kong configuration
-curl http://localhost:8001/config
+# Test gateway health
+curl http://localhost:8000/health
 
-# Reload Kong
-docker-compose restart gateway
+# Test a specific route
+curl http://localhost:8000/api/core/info
+
+# Restart gateway
+docker compose restart gateway-svc
 ```
 
 ## License
