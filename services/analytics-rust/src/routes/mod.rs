@@ -1,3 +1,4 @@
+pub mod certificates;
 pub mod charts;
 pub mod export;
 pub mod metrics;
@@ -37,6 +38,35 @@ use actix_web::web;
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api/analytics")
+            .route("/certificates", web::post().to(certificates::create_certificate))
+            .route(
+                "/certificates/bulk",
+                web::post().to(certificates::bulk_create_certificates),
+            )
+            .route(
+                "/certificates",
+                web::get().to(certificates::list_certificates),
+            )
+            .route(
+                "/certificates/{id}",
+                web::get().to(certificates::get_certificate),
+            )
+            .route(
+                "/certificates/{id}/revoke",
+                web::post().to(certificates::revoke_certificate),
+            )
+            .route(
+                "/certificates/{id}/pdf",
+                web::get().to(certificates::get_certificate_pdf),
+            )
+            .route(
+                "/certificates/{id}/pdf-reference",
+                web::put().to(certificates::update_certificate_pdf),
+            )
+            .route(
+                "/certificates/verify/{code}",
+                web::get().to(certificates::verify_certificate),
+            )
             .route(
                 "/charts/registration-funnel",
                 web::get().to(charts::registration_funnel),

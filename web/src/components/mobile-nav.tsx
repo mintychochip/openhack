@@ -44,9 +44,9 @@ export function MobileNav() {
   }, [pathname])
 
   let navItems = participantNavItems
-  if (user?.role === "judge" || user?.role === "admin") {
+  if (user?.roles.includes("judge") || user?.roles.includes("admin")) {
     navItems = judgeNavItems
-  } else if (user?.role === "sponsor") {
+  } else if (user?.roles.includes("sponsor")) {
     navItems = sponsorNavItems
   }
 

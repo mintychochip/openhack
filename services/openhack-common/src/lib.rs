@@ -33,9 +33,13 @@
     clippy::cast_possible_wrap
 )]
 
+pub mod audit;
 pub mod auth;
 pub mod config;
 pub mod db;
 pub mod errors;
 pub mod health;
+pub mod metrics;
 pub mod redis_ext;
+pub mod security_headers;
+pub mod validation;

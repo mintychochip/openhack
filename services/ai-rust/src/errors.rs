@@ -34,4 +34,9 @@ pub enum AiError {
 
     #[error("HTTP client error: {0}")]
     Http(#[from] reqwest::Error),
+
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
 }

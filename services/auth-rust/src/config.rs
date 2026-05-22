@@ -143,6 +143,9 @@ impl Config {
 
         let frontend_url =
             env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
+        if frontend_url.contains("localhost") && !cfg!(debug_assertions) {
+            log::warn!("FRONTEND_URL defaults to localhost — set FRONTEND_URL for production");
+        }
 
         Self {
             database_url,

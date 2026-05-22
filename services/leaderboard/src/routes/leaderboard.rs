@@ -10,6 +10,7 @@ use crate::services::ranking::RankingService;
 pub struct LeaderboardQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
+    pub phase_id: Option<uuid::Uuid>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -25,7 +26,8 @@ pub struct HistoryQuery {
 ///
 /// Public endpoint. Returns the leaderboard ordered by rank with
 /// pagination via `limit` (default 100) and `offset` (default 0)
-/// query parameters. Checks Redis cache first.
+/// query parameters. Optional `phase_id` filters to a specific phase.
+/// Checks Redis cache first.
 ///
 /// # Errors
 ///
@@ -43,12 +45,14 @@ pub async fn get_leaderboard(
 ) -> HttpResponse {
     let limit = query.limit.unwrap_or(100);
     let offset = query.offset.unwrap_or(0);
+    let phase_id = query.phase_id;
 
     match RankingService::get_leaderboard(
         pool.get_ref(),
         redis_conn.get_ref().as_ref(),
         limit,
         offset,
+        phase_id,
     )
     .await
     {

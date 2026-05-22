@@ -152,17 +152,14 @@ pub async fn register_user(
     pool: &PgPool,
     req: &RegisterRequest,
 ) -> Result<RegisterResponse, AuthError> {
-    if req.email.is_empty() || !req.email.contains('@') {
-        return Err(AuthError::BadRequest("Invalid email address".to_string()));
-    }
-    if req.password.len() < 8 {
-        return Err(AuthError::BadRequest(
-            "Password must be at least 8 characters".to_string(),
-        ));
-    }
-    if req.name.trim().is_empty() {
-        return Err(AuthError::BadRequest("Name is required".to_string()));
-    }
+    openhack_common::validation::validate_email(&req.email)
+        .map_err(|e| AuthError::BadRequest(e.message))?;
+
+    openhack_common::validation::validate_password(&req.password, 8, true, true, true, false)
+        .map_err(|e| AuthError::BadRequest(e.message))?;
+
+    openhack_common::validation::validate_name(&req.name, 100)
+        .map_err(|e| AuthError::BadRequest(e.message))?;
 
     let existing = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM auth.users WHERE email = $1")
         .bind(&req.email)
@@ -176,15 +173,19 @@ pub async fn register_user(
 
     let password_hash = hash_password(&req.password)?;
     let user_id = Uuid::new_v4();
+    let verification_token = Uuid::new_v4();
+    let verification_expires = chrono::Utc::now().naive_utc() + chrono::Duration::hours(24);
 
     sqlx::query(
-        "INSERT INTO auth.users (id, email, password_hash, name, email_verified, mfa_enabled, roles, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, false, false, ARRAY['participant'], NOW(), NOW())",
+        "INSERT INTO auth.users (id, email, password_hash, name, email_verified, mfa_enabled, roles, created_at, updated_at, email_verification_token, email_verification_token_expires_at)
+         VALUES ($1, $2, $3, $4, false, false, ARRAY['participant'], NOW(), NOW(), $5, $6)",
     )
     .bind(user_id)
     .bind(&req.email)
     .bind(&password_hash)
     .bind(req.name.trim())
+    .bind(verification_token)
+    .bind(verification_expires)
     .execute(pool)
     .await
     .map_err(AuthError::DatabaseError)?;
@@ -202,6 +203,7 @@ pub async fn register_user(
         email: req.email.clone(),
         name: req.name.trim().to_string(),
         created_at,
+        verification_token: Some(verification_token),
     })
 }
 
@@ -220,7 +222,7 @@ pub async fn register_user(
 ///
 /// - Reads from `auth.users` table.
 pub async fn find_user_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, AuthError> {
-    sqlx::query_as::<_, User>("SELECT id, email, password_hash, name, avatar_url, github_username, discord_id, email_verified, mfa_enabled, mfa_secret, sms_mfa_enabled, sms_phone_number, roles, created_at, updated_at, last_login_at FROM auth.users WHERE email = $1")
+    sqlx::query_as::<_, User>("SELECT id, email, password_hash, name, avatar_url, github_username, discord_id, email_verified, mfa_enabled, mfa_secret, sms_mfa_enabled, sms_phone_number, roles, created_at, updated_at, last_login_at, failed_login_attempts, locked_until, email_verification_token, email_verification_token_expires_at FROM auth.users WHERE email = $1")
         .bind(email)
         .fetch_optional(pool)
         .await
@@ -242,7 +244,7 @@ pub async fn find_user_by_email(pool: &PgPool, email: &str) -> Result<Option<Use
 ///
 /// - Reads from `auth.users` table.
 pub async fn find_user_by_id(pool: &PgPool, id: Uuid) -> Result<Option<User>, AuthError> {
-    sqlx::query_as::<_, User>("SELECT id, email, password_hash, name, avatar_url, github_username, discord_id, email_verified, mfa_enabled, mfa_secret, sms_mfa_enabled, sms_phone_number, roles, created_at, updated_at, last_login_at FROM auth.users WHERE id = $1")
+    sqlx::query_as::<_, User>("SELECT id, email, password_hash, name, avatar_url, github_username, discord_id, email_verified, mfa_enabled, mfa_secret, sms_mfa_enabled, sms_phone_number, roles, created_at, updated_at, last_login_at, failed_login_attempts, locked_until, email_verification_token, email_verification_token_expires_at FROM auth.users WHERE id = $1")
         .bind(id)
         .fetch_optional(pool)
         .await
@@ -432,7 +434,7 @@ pub async fn list_users(
         .map_err(AuthError::DatabaseError)?;
 
         let users = sqlx::query_as::<_, User>(
-            "SELECT id, email, password_hash, name, avatar_url, github_username, discord_id, email_verified, mfa_enabled, mfa_secret, sms_mfa_enabled, sms_phone_number, roles, created_at, updated_at, last_login_at FROM auth.users WHERE email ILIKE $1 OR name ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3",
+            "SELECT id, email, password_hash, name, avatar_url, github_username, discord_id, email_verified, mfa_enabled, mfa_secret, sms_mfa_enabled, sms_phone_number, roles, created_at, updated_at, last_login_at, failed_login_attempts, locked_until, email_verification_token, email_verification_token_expires_at FROM auth.users WHERE email ILIKE $1 OR name ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3",
         )
         .bind(&pattern)
         .bind(limit)
@@ -449,7 +451,7 @@ pub async fn list_users(
             .map_err(AuthError::DatabaseError)?;
 
         let users = sqlx::query_as::<_, User>(
-            "SELECT id, email, password_hash, name, avatar_url, github_username, discord_id, email_verified, mfa_enabled, mfa_secret, sms_mfa_enabled, sms_phone_number, roles, created_at, updated_at, last_login_at FROM auth.users ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+            "SELECT id, email, password_hash, name, avatar_url, github_username, discord_id, email_verified, mfa_enabled, mfa_secret, sms_mfa_enabled, sms_phone_number, roles, created_at, updated_at, last_login_at, failed_login_attempts, locked_until, email_verification_token, email_verification_token_expires_at FROM auth.users ORDER BY created_at DESC LIMIT $1 OFFSET $2",
         )
         .bind(limit)
         .bind(offset)
@@ -461,4 +463,197 @@ pub async fn list_users(
     };
 
     Ok((users, total))
+}
+
+/// Record a failed login attempt and potentially lock the account.
+///
+/// # Expected Behavior
+///
+/// Updates the user's failed_login_attempts counter and sets locked_until
+/// if the threshold (5 attempts) is reached. Used after a failed password
+/// verification.
+///
+/// # Errors
+///
+/// Returns `AuthError::DatabaseError` on database failures.
+///
+/// # Side Effects
+///
+/// - Updates `auth.users` table (failed_login_attempts, locked_until).
+pub async fn record_failed_login(
+    pool: &PgPool,
+    user_id: Uuid,
+    attempts: i32,
+    locked_until: Option<chrono::NaiveDateTime>,
+) -> Result<(), AuthError> {
+    sqlx::query(
+        "UPDATE auth.users SET failed_login_attempts = $1, locked_until = $2, updated_at = NOW() WHERE id = $3",
+    )
+    .bind(attempts)
+    .bind(locked_until)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(AuthError::DatabaseError)?;
+
+    Ok(())
+}
+
+/// Reset failed login attempts after a successful login.
+///
+/// # Expected Behavior
+///
+/// Resets failed_login_attempts to 0 and clears locked_until. Called after
+/// successful password verification.
+///
+/// # Errors
+///
+/// Returns `AuthError::DatabaseError` on database failures.
+///
+/// # Side Effects
+///
+/// - Updates `auth.users` table (failed_login_attempts, locked_until).
+pub async fn reset_failed_logins(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<(), AuthError> {
+    sqlx::query(
+        "UPDATE auth.users SET failed_login_attempts = 0, locked_until = NULL, updated_at = NOW() WHERE id = $1",
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(AuthError::DatabaseError)?;
+
+    Ok(())
+}
+
+/// Generate an email verification token for a user.
+///
+/// # Expected Behavior
+///
+/// Generates a UUID token, sets expires_at to 24 hours from now,
+/// and updates the user record. The token is used to verify the
+/// user's email address.
+///
+/// # Errors
+///
+/// Returns `AuthError::DatabaseError` on database failures.
+///
+/// # Side Effects
+///
+/// - Updates `auth.users` table (email_verification_token, email_verification_token_expires_at).
+pub async fn generate_email_verification_token(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<Uuid, AuthError> {
+    let token = Uuid::new_v4();
+    let expires_at = chrono::Utc::now().naive_utc() + chrono::Duration::hours(24);
+
+    sqlx::query(
+        "UPDATE auth.users SET email_verification_token = $1, email_verification_token_expires_at = $2, updated_at = NOW() WHERE id = $3",
+    )
+    .bind(token)
+    .bind(expires_at)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(AuthError::DatabaseError)?;
+
+    Ok(token)
+}
+
+/// Verify an email verification token.
+///
+/// # Expected Behavior
+///
+/// Checks if the token exists, is not expired, and belongs to a user.
+/// If valid, sets email_verified = true and clears the token.
+/// Returns the user's email on success.
+///
+/// # Errors
+///
+/// Returns `AuthError::NotFound` if token is invalid or expired.
+/// Returns `AuthError::DatabaseError` on database failures.
+///
+/// # Side Effects
+///
+/// - Reads from `auth.users` table.
+/// - Updates `auth.users` table (email_verified, email_verification_token, email_verification_token_expires_at).
+pub async fn verify_email_token(
+    pool: &PgPool,
+    token: Uuid,
+) -> Result<String, AuthError> {
+    let now = chrono::Utc::now().naive_utc();
+
+    let user_id: Option<Uuid> = sqlx::query_scalar(
+        "SELECT id FROM auth.users WHERE email_verification_token = $1 AND email_verification_token_expires_at > $2",
+    )
+    .bind(token)
+    .bind(now)
+    .fetch_optional(pool)
+    .await
+    .map_err(AuthError::DatabaseError)?
+    .flatten();
+
+    let Some(user_id) = user_id else {
+        return Err(AuthError::NotFound("Invalid or expired verification token".to_string()));
+    };
+
+    let email: String = sqlx::query_scalar("SELECT email FROM auth.users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(pool)
+        .await
+        .map_err(AuthError::DatabaseError)?;
+
+    sqlx::query(
+        "UPDATE auth.users SET email_verified = true, email_verification_token = NULL, email_verification_token_expires_at = NULL, updated_at = NOW() WHERE id = $1",
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(AuthError::DatabaseError)?;
+
+    Ok(email)
+}
+
+/// Resend email verification token.
+///
+/// # Expected Behavior
+///
+/// Generates a new token for a user who hasn't verified their email.
+/// Returns error if user is already verified or not found.
+///
+/// # Errors
+///
+/// Returns `AuthError::BadRequest` if user is already verified.
+/// Returns `AuthError::NotFound` if user doesn't exist.
+/// Returns `AuthError::DatabaseError` on database failures.
+///
+/// # Side Effects
+///
+/// - Reads from `auth.users` table.
+/// - Updates `auth.users` table (email_verification_token, email_verification_token_expires_at).
+pub async fn resend_verification_token(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<Uuid, AuthError> {
+    let email_verified: Option<bool> = sqlx::query_scalar(
+        "SELECT email_verified FROM auth.users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(AuthError::DatabaseError)?
+    .flatten();
+
+    let Some(verified) = email_verified else {
+        return Err(AuthError::NotFound("User not found".to_string()));
+    };
+
+    if verified {
+        return Err(AuthError::BadRequest("Email already verified".to_string()));
+    }
+
+    generate_email_verification_token(pool, user_id).await
 }

@@ -20,8 +20,10 @@ env_logger = { workspace = true }
 log = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }
+jsonwebtoken = "9"
 rust_decimal = "1"
 rand = "0.8"
+futures-util = "0.3"
 
 [features]
 jemalloc = ["tikv-jemallocator"]

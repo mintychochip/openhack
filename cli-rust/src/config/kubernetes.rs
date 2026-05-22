@@ -157,6 +157,7 @@ fn service_key(svc: ServiceName) -> &'static str {
         ServiceName::Analytics => "analyticsService",
         ServiceName::Sponsors => "sponsorsService",
         ServiceName::Media => "mediaService",
+        ServiceName::DiscordBot => "discordBotService",
     }
 }
 

@@ -28,6 +28,13 @@ pub struct Project {
     pub tags: Option<Vec<String>>,
     pub submission_number: Option<i32>,
     pub submitted_at: Option<DateTime<Utc>>,
+    pub featured: bool,
+    pub showcase_order: i32,
+    pub favorite_count: i32,
+    pub screening_status: Option<String>,
+    pub screened_by: Option<Uuid>,
+    pub screened_at: Option<DateTime<Utc>>,
+    pub screening_notes: Option<String>,
 }
 
 /// Request body for creating a new project.
@@ -89,6 +96,11 @@ pub struct ProjectResponse {
     pub submitted_at: Option<DateTime<Utc>>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
+    pub featured: bool,
+    pub showcase_order: i32,
+    pub favorite_count: i32,
+    pub screening_status: Option<String>,
+    pub is_favorite: Option<bool>,
 }
 
 impl From<Project> for ProjectResponse {
@@ -110,6 +122,11 @@ impl From<Project> for ProjectResponse {
             submitted_at: p.submitted_at,
             created_at: p.created_at,
             updated_at: p.updated_at,
+            featured: p.featured,
+            showcase_order: p.showcase_order,
+            favorite_count: p.favorite_count,
+            screening_status: p.screening_status,
+            is_favorite: None,
         }
     }
 }
@@ -147,4 +164,41 @@ pub struct ProjectListQuery {
     pub page_size: Option<i64>,
     pub status: Option<String>,
     pub category: Option<String>,
+}
+
+/// Query parameters for showcase/gallery.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ShowcaseQuery {
+    pub page: Option<i64>,
+    pub page_size: Option<i64>,
+    pub category: Option<String>,
+    pub sort: Option<String>,
+}
+
+/// Request to feature/unfeature a project.
+#[derive(Debug, Clone, Deserialize)]
+pub struct FeatureRequest {
+    pub featured: bool,
+    pub showcase_order: Option<i32>,
+}
+
+/// Request to favorite/unfavorite a project.
+#[derive(Debug, Clone, Deserialize)]
+pub struct FavoriteRequest {
+    pub favorite: bool,
+}
+
+/// Response for favorite count.
+#[derive(Debug, Clone, Serialize)]
+pub struct FavoriteResponse {
+    pub project_id: Uuid,
+    pub favorite_count: i32,
+    pub is_favorite: bool,
+}
+
+/// Request for screening a project.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ScreenRequest {
+    pub status: String,
+    pub notes: Option<String>,
 }

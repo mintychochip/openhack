@@ -74,6 +74,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 "/phases/{id}/advancements",
                 web::get().to(phases::get_advancements),
             )
+            .route(
+                "/phases/{id}/advance",
+                web::post().to(phases::advance_phase),
+            )
             .route("/normalize", web::post().to(normalization::normalize))
             .route(
                 "/normalize/{phase_id}/status",

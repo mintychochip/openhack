@@ -52,6 +52,7 @@ impl RankingService {
     /// then by `combined_score` and `total_score` descending. Checks Redis
     /// cache first; on cache miss, queries the database and caches the
     /// result with a 1-minute TTL. Supports pagination via limit/offset.
+    /// Optional `phase_id` filters to a specific phase.
     ///
     /// # Errors
     ///
@@ -67,6 +68,7 @@ impl RankingService {
         conn: Option<&MultiplexedConnection>,
         limit: i64,
         offset: i64,
+        phase_id: Option<Uuid>,
     ) -> Result<LeaderboardResponse, LeaderboardError> {
         if let Ok(Some(cached)) = cache::get_leaderboard_from_cache(conn.cloned()).await {
             if let Ok(parsed) = serde_json::from_str::<LeaderboardResponse>(&cached) {
@@ -74,18 +76,35 @@ impl RankingService {
             }
         }
 
-        let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM leaderboard.ranks")
-            .fetch_one(pool)
-            .await
-            .unwrap_or(0);
-
-        let ranks = sqlx::query_as::<_, Rank>(
-            "SELECT * FROM leaderboard.ranks ORDER BY rank ASC NULLS LAST, combined_score DESC NULLS LAST, total_score DESC LIMIT $1 OFFSET $2",
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(pool)
-        .await?;
+        let (total, ranks) = if let Some(pid) = phase_id {
+            let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM leaderboard.ranks WHERE phase_id = $1")
+                .bind(pid)
+                .fetch_one(pool)
+                .await
+                .unwrap_or(0);
+            let rows = sqlx::query_as::<_, Rank>(
+                "SELECT * FROM leaderboard.ranks WHERE phase_id = $1 ORDER BY rank ASC NULLS LAST, combined_score DESC NULLS LAST, total_score DESC LIMIT $2 OFFSET $3",
+            )
+            .bind(pid)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(pool)
+            .await?;
+            (count, rows)
+        } else {
+            let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM leaderboard.ranks")
+                .fetch_one(pool)
+                .await
+                .unwrap_or(0);
+            let rows = sqlx::query_as::<_, Rank>(
+                "SELECT * FROM leaderboard.ranks ORDER BY rank ASC NULLS LAST, combined_score DESC NULLS LAST, total_score DESC LIMIT $1 OFFSET $2",
+            )
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(pool)
+            .await?;
+            (count, rows)
+        };
 
         let response = LeaderboardResponse {
             leaderboard: ranks.into_iter().map(Into::into).collect(),
@@ -250,7 +269,7 @@ impl RankingService {
 
         log::info!("Recalculated rankings using formula {}", formula.id);
 
-        Self::get_leaderboard(pool, conn, 100, 0).await
+        Self::get_leaderboard(pool, conn, 100, 0, None).await
     }
 
     /// Freeze the leaderboard, locking all non-frozen team rankings.
@@ -287,7 +306,7 @@ impl RankingService {
 
         log::info!("Leaderboard frozen");
 
-        Self::get_leaderboard(pool, conn, 100, 0).await
+        Self::get_leaderboard(pool, conn, 100, 0, None).await
     }
 
     /// Unfreeze the leaderboard, unlocking all frozen team rankings.
@@ -322,7 +341,7 @@ impl RankingService {
 
         log::info!("Leaderboard unfrozen");
 
-        Self::get_leaderboard(pool, conn, 100, 0).await
+        Self::get_leaderboard(pool, conn, 100, 0, None).await
     }
 
     /// Get leaderboard statistics.

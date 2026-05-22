@@ -3,8 +3,12 @@ pub mod checkin;
 pub mod event;
 pub mod hackathon;
 pub mod lambda;
+pub mod legal;
 pub mod phase;
 pub mod project;
+pub mod screening;
+pub mod search;
+pub mod showcase;
 pub mod team;
 
 use actix_web::web;
@@ -87,6 +91,13 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 "/phases/hackathon/{hackathon_id}/next-transition",
                 web::get().to(phase::get_next_transition),
             )
+            .route("/showcase", web::get().to(showcase::get_showcase))
+            .route("/search", web::get().to(search::search))
+            .route("/projects/{id}/favorite", web::post().to(showcase::toggle_favorite))
+            .route("/projects/{id}/favorite", web::get().to(showcase::get_favorite))
+            .route("/users/looking-for-team", web::get().to(screening::list_team_seekers))
+            .route("/teams/looking-for-members", web::get().to(screening::list_teams_seeking))
+            .route("/profile/team-seeking", web::put().to(screening::update_team_seeking))
             .route(
                 "/checkin/events/{id}/qr",
                 web::post().to(checkin::create_qr),
@@ -101,6 +112,20 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 "/checkin/events/{id}/attendees",
                 web::get().to(checkin::get_attendees),
             )
+            .route("/rules", web::post().to(legal::create_rule))
+            .route("/rules", web::get().to(legal::list_rules))
+            .route("/rules/{id}", web::get().to(legal::get_rule))
+            .route("/rules/{id}", web::put().to(legal::update_rule))
+            .route("/rules/{id}/publish", web::post().to(legal::publish_rule))
+            .route("/rules/{id}", web::delete().to(legal::delete_rule))
+            .route("/fulfillment", web::post().to(legal::create_fulfillment))
+            .route("/fulfillment", web::get().to(legal::list_fulfillments))
+            .route("/fulfillment/{id}", web::get().to(legal::get_fulfillment))
+            .route("/fulfillment/{id}", web::put().to(legal::update_fulfillment))
+            .route("/fulfillment/{id}/claim", web::post().to(legal::claim_prize))
+            .route("/fulfillment/{id}/ship", web::post().to(legal::ship_prize))
+            .route("/fulfillment/{id}/fulfill", web::post().to(legal::fulfill_prize))
+            .route("/fulfillment/{id}/decline", web::post().to(legal::decline_prize))
             .service(
                 web::scope("/admin")
                     .route("/teams", web::get().to(admin::list_teams))
@@ -120,7 +145,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route(
                         "/trigger-phase-check",
                         web::post().to(admin::trigger_phase_check),
-                    ),
+                    )
+                    .route("/projects/screening", web::get().to(screening::list_screening_queue))
+                    .route("/projects/{id}/screen", web::post().to(screening::screen_project))
+                    .route("/projects/{id}/feature", web::put().to(showcase::set_featured)),
             ),
     )
     .route("/lambda/event", web::post().to(lambda::dispatch));

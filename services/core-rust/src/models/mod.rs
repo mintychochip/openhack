@@ -1,6 +1,9 @@
 pub mod checkin;
 pub mod event;
 pub mod hackathon;
+pub mod legal;
 pub mod phase;
 pub mod project;
+pub mod search;
 pub mod team;
+pub mod user_profile;

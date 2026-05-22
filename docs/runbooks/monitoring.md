@@ -455,3 +455,70 @@ curl -X POST https://api.pagerduty.com/incidents \
 **Last Updated:** May 13, 2026  
 **Review Schedule:** Quarterly  
 **Owner:** DevOps Team
+
+---
+
+## Kind Cluster Limitations
+
+**Purpose:** Document known limitations when running the monitoring stack in local kind clusters.
+
+### Control-Plane Components Unreachable
+
+The following Kubernetes control-plane components **cannot be scraped** in kind clusters:
+
+| Component | ServiceMonitor | Status | Reason |
+|-----------|---------------|--------|--------|
+| etcd | `kube-etcd` | DOWN (expected) | Runs as static process inside kind container; metrics endpoint (`:2379/metrics`) not accessible from pod network |
+| kube-scheduler | `kube-scheduler` | DOWN (expected) | Binds to `--bind-address=127.0.0.1` by default; secure metrics port unreachable from pods |
+| kube-controller-manager | `kube-controller-manager` | DOWN (expected) | Binds to `--bind-address=127.0.0.1` by default; secure metrics port unreachable from pods |
+| kube-proxy (per node) | `kube-proxy` | DOWN (expected) | DaemonSet runs but metrics bind address restricts access in kind |
+
+### Mitigation
+
+These ServiceMonitors are **disabled by default** in `deploy/monitoring/values-local.yaml`:
+
+```yaml
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false
+```
+
+This prevents 5 permanent DOWN targets from appearing in the Prometheus UI.
+
+### Production Deployment
+
+**DO NOT apply `values-local.yaml` to production clusters.**
+
+In production environments (EKS, GKE, AKS, bare metal):
+
+1. Use the base `values.yaml` without the kind overrides
+2. Control-plane metrics are typically accessible via:
+   - Managed services (EKS/GKE/AKS) expose control-plane metrics through dedicated endpoints
+   - Self-managed clusters can configure `--bind-address=0.0.0.0` on control-plane components
+3. Re-enable all ServiceMonitors for full cluster visibility
+
+### Alerting Impact
+
+No alert rules in `deploy/monitoring/prometheus/rules.yaml` reference these control-plane jobs. The `ServiceDown` alert only monitors `job="openhack-services"`.
+
+The `kube-prometheus-stack` chart includes default alert rules for control-plane health, but these are automatically disabled when their corresponding ServiceMonitors are disabled.
+
+### Verification
+
+To confirm control-plane ServiceMonitors are disabled:
+
+```bash
+# Check for ServiceMonitors in the monitoring namespace
+kubectl get servicemonitors -n openhack
+
+# Verify Prometheus targets (should NOT show etcd, scheduler, controller-manager, kube-proxy)
+kubectl port-forward svc/openhack-monitoring-prometheus 9090:80 -n openhack
+# Visit http://localhost:9090/targets
+```
+
+Expected: Only application ServiceMonitors (`openhack-*`) and infrastructure targets (node-exporter, kube-state-metrics, kubelet) should appear.

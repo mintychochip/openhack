@@ -1,10 +1,24 @@
+use crate::middleware::auth::{get_auth_user, require_admin_or_organizer};
 use crate::models::rubric::{ListQuery, RubricCreate, RubricUpdate, ScoreValidationRequest};
 use crate::services::judging::JudgingService;
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpRequest, HttpResponse};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-pub async fn create_rubric(pool: web::Data<PgPool>, body: web::Json<RubricCreate>) -> HttpResponse {
+pub async fn create_rubric(
+    req: HttpRequest,
+    pool: web::Data<PgPool>,
+    body: web::Json<RubricCreate>,
+) -> HttpResponse {
+    let user = match get_auth_user(&req) {
+        Ok(u) => u,
+        Err(e) => return e.to_http_response(),
+    };
+
+    if let Err(e) = require_admin_or_organizer(&user) {
+        return e.to_http_response();
+    }
+
     match JudgingService::create_rubric(pool.get_ref(), &body.into_inner()).await {
         Ok(r) => HttpResponse::Created().json(r),
         Err(e) => e.to_http_response(),
@@ -29,10 +43,20 @@ pub async fn get_rubric(pool: web::Data<PgPool>, path: web::Path<Uuid>) -> HttpR
 }
 
 pub async fn update_rubric(
+    req: HttpRequest,
     pool: web::Data<PgPool>,
     path: web::Path<Uuid>,
     body: web::Json<RubricUpdate>,
 ) -> HttpResponse {
+    let user = match get_auth_user(&req) {
+        Ok(u) => u,
+        Err(e) => return e.to_http_response(),
+    };
+
+    if let Err(e) = require_admin_or_organizer(&user) {
+        return e.to_http_response();
+    }
+
     let id = path.into_inner();
     match JudgingService::update_rubric(pool.get_ref(), id, &body.into_inner()).await {
         Ok(r) => HttpResponse::Ok().json(r),
@@ -40,7 +64,16 @@ pub async fn update_rubric(
     }
 }
 
-pub async fn delete_rubric(pool: web::Data<PgPool>, path: web::Path<Uuid>) -> HttpResponse {
+pub async fn delete_rubric(req: HttpRequest, pool: web::Data<PgPool>, path: web::Path<Uuid>) -> HttpResponse {
+    let user = match get_auth_user(&req) {
+        Ok(u) => u,
+        Err(e) => return e.to_http_response(),
+    };
+
+    if let Err(e) = require_admin_or_organizer(&user) {
+        return e.to_http_response();
+    }
+
     let id = path.into_inner();
     match JudgingService::delete_rubric(pool.get_ref(), id).await {
         Ok(true) => HttpResponse::NoContent().finish(),
@@ -67,7 +100,20 @@ pub async fn get_version(pool: web::Data<PgPool>, path: web::Path<(Uuid, i32)>) 
     }
 }
 
-pub async fn create_version(pool: web::Data<PgPool>, path: web::Path<Uuid>) -> HttpResponse {
+pub async fn create_version(
+    req: HttpRequest,
+    pool: web::Data<PgPool>,
+    path: web::Path<Uuid>,
+) -> HttpResponse {
+    let user = match get_auth_user(&req) {
+        Ok(u) => u,
+        Err(e) => return e.to_http_response(),
+    };
+
+    if let Err(e) = require_admin_or_organizer(&user) {
+        return e.to_http_response();
+    }
+
     let rubric_id = path.into_inner();
     match JudgingService::create_rubric_version(pool.get_ref(), rubric_id).await {
         Ok(v) => HttpResponse::Created().json(v),

@@ -156,7 +156,10 @@ pub async fn rsvp_event(
     let event_id = path.into_inner();
     let mut redis_local = redis_conn.get_ref().clone();
     match EventService::rsvp_event(pool.get_ref(), redis_local.as_mut(), event_id, user_id).await {
-        Ok(()) => HttpResponse::Ok().json(serde_json::json!({"message": "RSVP successful"})),
+        Ok(()) => {
+            openhack_common::metrics::inc_business_counter("core_event_rsvps_total");
+            HttpResponse::Ok().json(serde_json::json!({"message": "RSVP successful"}))
+        }
         Err(e) => e.to_http_response(),
     }
 }

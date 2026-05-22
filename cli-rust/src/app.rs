@@ -54,6 +54,7 @@ pub enum ServiceName {
     Sponsors,
     Media,
     Gateway,
+    DiscordBot,
 }
 
 impl ServiceName {
@@ -70,6 +71,7 @@ impl ServiceName {
             Self::Sponsors => "sponsors-svc",
             Self::Media => "media-svc",
             Self::Gateway => "gateway-svc",
+            Self::DiscordBot => "discord-bot-svc",
         }
     }
 
@@ -87,6 +89,7 @@ impl ServiceName {
             Self::Sponsors => 3009,
             Self::Media => 3010,
             Self::Gateway => 8000,
+            Self::DiscordBot => 3011,
         }
     }
 
@@ -103,6 +106,7 @@ impl ServiceName {
             Self::Sponsors => "/api/sponsors",
             Self::Media => "/api/media",
             Self::Gateway => "/api/events",
+            Self::DiscordBot => "/api/discord",
         }
     }
 
@@ -111,7 +115,7 @@ impl ServiceName {
         match self {
             Self::Auth | Self::Judging | Self::Analytics => 100,
             Self::Core | Self::Leaderboard | Self::Gateway => 300,
-            Self::Mail | Self::Notify | Self::Sponsors | Self::Media => 50,
+            Self::Mail | Self::Notify | Self::Sponsors | Self::Media | Self::DiscordBot => 50,
             Self::Ai => 30,
         }
     }
@@ -129,7 +133,8 @@ impl ServiceName {
             | Self::Ai
             | Self::Analytics
             | Self::Sponsors
-            | Self::Gateway => 1,
+            | Self::Gateway
+            | Self::DiscordBot => 1,
         }
     }
 
@@ -151,6 +156,7 @@ impl ServiceName {
             Self::Sponsors,
             Self::Media,
             Self::Gateway,
+            Self::DiscordBot,
         ]
     }
 }

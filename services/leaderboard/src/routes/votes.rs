@@ -40,7 +40,10 @@ pub async fn cast_vote(
     )
     .await
     {
-        Ok(response) => HttpResponse::Created().json(response),
+        Ok(response) => {
+            openhack_common::metrics::inc_business_counter("leaderboard_votes_total");
+            HttpResponse::Created().json(response)
+        }
         Err(e) => e.to_http_response(),
     }
 }

@@ -402,6 +402,50 @@ jobs:
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
           export KUBECONFIG=kubeconfig
 
+      - name: Run database migrations
+        run: |
+          kubectl apply -f - <<EOF
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: db-migrate-${{ github.sha }}
+            namespace: openhack
+          spec:
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: migrate
+                    image: pgvector/pgvector:pg16
+                    command: ["sh", "-c"]
+                    args:
+                      - |
+                        echo "Running database migrations..."
+                        for f in docker/postgres/*/*.sql; do
+                          echo "Applying: \$f"
+                          PGPASSWORD="\$DATABASE_PASSWORD" psql -h "\$POSTGRES_HOST" -U "\$POSTGRES_USER" -d "\$POSTGRES_DB" -f "\$f" || exit 1
+                        done
+                        echo "Migrations complete"
+                    env:
+                      - name: POSTGRES_HOST
+                        value: "openhack-postgresql"
+                      - name: POSTGRES_PORT
+                        value: "5432"
+                      - name: POSTGRES_USER
+                        value: "openhack"
+                      - name: POSTGRES_DB
+                        value: "openhack"
+                      - name: DATABASE_PASSWORD
+                        valueFrom:
+                          secretKeyRef:
+                            name: openhack-secrets
+                            key: database-password
+                backoffLimit: 3
+                activeDeadlineSeconds: 300
+          EOF
+          
+          kubectl wait --for=condition=complete job/db-migrate-${{ github.sha }} -n openhack --timeout=300s
+
       - name: Deploy with Helm
         run: |
           helm upgrade --install openhack ./deploy/helm/openhack \

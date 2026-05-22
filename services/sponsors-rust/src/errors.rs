@@ -18,7 +18,7 @@ pub enum SponsorError {
 
     /// The request data failed validation.
     #[error("Validation error: {0}")]
-    _Validation(String),
+    Validation(String),
 
     /// The authenticated user lacks the required role.
     #[error("Forbidden: {0}")]
@@ -71,7 +71,7 @@ impl SponsorError {
             SponsorError::NotFound(_, _) => HttpResponse::NotFound().json(ErrorBody {
                 error: self.to_string(),
             }),
-            SponsorError::_Validation(_) => HttpResponse::BadRequest().json(ErrorBody {
+            SponsorError::Validation(_) => HttpResponse::BadRequest().json(ErrorBody {
                 error: self.to_string(),
             }),
             SponsorError::Forbidden(_) => HttpResponse::Forbidden().json(ErrorBody {

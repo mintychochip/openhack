@@ -126,3 +126,30 @@ pub struct PhaseLeaderboardResponse {
     pub entries: Vec<PhaseLeaderboardEntry>,
     pub total: i64,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PhaseAdvanceRequest {
+    /// Override the advancement_count from the phase config (optional)
+    pub advancement_count: Option<i32>,
+    /// Judge IDs to assign to the advanced teams in the next phase (optional)
+    pub judge_ids: Option<Vec<Uuid>>,
+    /// Rubric ID to use for assignments in the next phase (optional)
+    pub rubric_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PhaseAdvanceResponse {
+    pub from_phase_id: Uuid,
+    pub to_phase_id: Option<Uuid>,
+    pub advanced_teams: Vec<AdvancedTeam>,
+    pub total_advanced: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AdvancedTeam {
+    pub team_id: Uuid,
+    pub project_id: Uuid,
+    pub rank_in_phase: i32,
+    pub total_score: f64,
+    pub assignments_created: i32,
+}

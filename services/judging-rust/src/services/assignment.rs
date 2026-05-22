@@ -6,6 +6,38 @@ use crate::models::assignment::{
 use sqlx::PgPool;
 use uuid::Uuid;
 
+async fn validate_judge_roles(judge_ids: &[Uuid], pool: &PgPool) -> Result<(), JudgingError> {
+    if judge_ids.is_empty() {
+        return Ok(());
+    }
+
+    let judge_ids_str: Vec<String> = judge_ids.iter().map(|id| id.to_string()).collect();
+    
+    let valid_judges: Vec<String> = sqlx::query_scalar(
+        "SELECT id::text FROM auth.users 
+         WHERE id = ANY($1) 
+         AND (roles && ARRAY['judge'::text, 'admin'::text, 'organizer'::text])",
+    )
+    .bind(&judge_ids_str)
+    .fetch_all(pool)
+    .await
+    .map_err(JudgingError::from)?;
+
+    let invalid: Vec<&Uuid> = judge_ids
+        .iter()
+        .filter(|id| !valid_judges.contains(&id.to_string()))
+        .collect();
+
+    if !invalid.is_empty() {
+        return Err(JudgingError::Validation(format!(
+            "The following users do not have judge/admin/organizer roles: {:?}",
+            invalid.iter().map(|id| id.to_string()).collect::<Vec<_>>()
+        )));
+    }
+
+    Ok(())
+}
+
 pub struct AssignmentService;
 
 impl AssignmentService {
@@ -13,6 +45,8 @@ impl AssignmentService {
         pool: &PgPool,
         data: &AssignmentCreate,
     ) -> Result<AssignmentResponse, JudgingError> {
+        validate_judge_roles(&[data.judge_id], pool).await?;
+
         let row = sqlx::query_as::<_, Assignment>(
             "INSERT INTO judging.assignments (judge_id, project_id, rubric_id, priority, status)
              VALUES ($1, $2, $3, $4, 'pending') RETURNING *",
@@ -175,6 +209,8 @@ impl AssignmentService {
         pool: &PgPool,
         data: &AssignmentBulkRequest,
     ) -> Result<Vec<AssignmentResponse>, JudgingError> {
+        validate_judge_roles(&data.judge_ids, pool).await?;
+
         let mut results = Vec::new();
 
         match data.distribution.as_str() {

@@ -37,6 +37,9 @@ impl BaseConfig {
                 "JWT_SECRET must be at least 32 characters".to_string(),
             ));
         }
+        if jwt_secret.contains("change-me-in-production") {
+            log::warn!("JWT_SECRET contains default placeholder value — replace before deploying to production");
+        }
         let port: u16 = env::var("SERVICE_PORT")
             .or_else(|_| env::var("PORT"))
             .unwrap_or_else(|_| default_port.to_string())

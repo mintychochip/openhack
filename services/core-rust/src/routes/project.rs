@@ -176,7 +176,10 @@ pub async fn submit_project(
     let id = path.into_inner();
     let mut redis_local = redis_conn.get_ref().clone();
     match ProjectService::submit_project(pool.get_ref(), redis_local.as_mut(), id, user_id).await {
-        Ok(project) => HttpResponse::Ok().json(project),
+        Ok(project) => {
+            openhack_common::metrics::inc_business_counter("core_projects_submitted_total");
+            HttpResponse::Ok().json(project)
+        }
         Err(e) => e.to_http_response(),
     }
 }

@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "openhack.fullname" . }}-db-migrate
+  labels:
+    {{- include "openhack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db-migrate
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "openhack.labels" . | nindent 8 }}
+        app.kubernetes.io/component: db-migrate
+    spec:
+      restartPolicy: Never
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: "{{ .Values.migrationJob.image.repository }}:{{ .Values.migrationJob.image.tag }}"
+          imagePullPolicy: {{ .Values.migrationJob.image.pullPolicy }}
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Running database migrations..."
+              cd /migrations
+              
+              # Run all SQL files in order
+              for f in $(ls *.sql | sort); do
+                echo "Applying migration: $f"
+                PGPASSWORD="$DATABASE_PASSWORD" psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$f" || exit 1
+              done
+              
+              echo "Migrations completed successfully"
+          env:
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "openhack.fullname" . }}-config
+                  key: postgres-host
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "openhack.fullname" . }}-config
+                  key: postgres-port
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "openhack.fullname" . }}-config
+                  key: postgres-user
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "openhack.fullname" . }}-config
+                  key: postgres-db
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openhack.fullname" . }}-secrets
+                  key: database-password
+          resources:
+            {{- toYaml .Values.migrationJob.resources | nindent 12 }}
+      backoffLimit: 3
+      activeDeadlineSeconds: 300

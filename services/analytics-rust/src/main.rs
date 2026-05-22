@@ -13,14 +13,15 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 mod config;
 mod errors;
+mod middleware;
 mod models;
 mod routes;
 mod services;
 mod tests;
 
 use actix_cors::Cors;
-use actix_web::{middleware, web, App, HttpResponse, HttpServer};
-use openhack_common::db;
+use actix_web::{web, App, HttpResponse, HttpServer};
+use openhack_common::{auth::JwtSecret, db};
 use sqlx::postgres::PgPool;
 
 /// Start the Actix-web HTTP server for the Analytics service.
@@ -72,20 +73,41 @@ async fn main() -> std::io::Result<()> {
     let config_data = web::Data::new(config);
 
     HttpServer::new(move || {
-        let cors = Cors::default()
-            .allow_any_origin()
-            .allow_any_method()
-            .allow_any_header()
-            .max_age(3600);
+        let cors_origins: Vec<String> = config_data
+            .cors_allowed_origins
+            .clone()
+            .unwrap_or_else(|| vec!["*".to_string()]);
+
+        let cors = if cors_origins.iter().any(|o| o == "*") {
+            Cors::default()
+                .allow_any_origin()
+                .allow_any_method()
+                .allow_any_header()
+                .max_age(3600)
+        } else {
+            let mut cors_builder = Cors::default()
+                .allowed_methods(vec!["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+                .allowed_headers(vec!["Content-Type", "Accept", "Authorization"])
+                .max_age(3600);
+
+            for origin in &cors_origins {
+                cors_builder = cors_builder.allowed_origin(origin);
+            }
+            cors_builder
+        };
 
         App::new()
             .wrap(cors)
-            .wrap(middleware::Logger::default())
+            .wrap(openhack_common::security_headers::SecurityHeadersMiddleware::new())
+            .wrap(openhack_common::metrics::MetricsMiddleware::new("analytics"))
+            .wrap(actix_web::middleware::Logger::default())
             .app_data(pool_data.clone())
             .app_data(config_data.clone())
+            .app_data(web::Data::new(JwtSecret(config_data.jwt_secret.clone())))
             .configure(routes::configure)
             .route("/health", web::get().to(health_check))
             .route("/", web::get().to(service_info))
+            .route("/metrics", web::get().to(metrics_handler))
     })
     .bind(("0.0.0.0", port))?
     .run()
@@ -138,4 +160,10 @@ async fn service_info() -> HttpResponse {
         "service": "analytics-service",
         "version": "0.1.0",
     }))
+}
+
+async fn metrics_handler() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("text/plain; version=0.0.4")
+        .body(openhack_common::metrics::render_metrics())
 }

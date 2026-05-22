@@ -67,6 +67,10 @@ async fn main() -> std::io::Result<()> {
 
     log::info!("Starting core service on port {}", config.port);
 
+    openhack_common::metrics::register_business_counter("core_teams_created_total", "Total teams created");
+    openhack_common::metrics::register_business_counter("core_projects_submitted_total", "Total projects submitted");
+    openhack_common::metrics::register_business_counter("core_event_rsvps_total", "Total event RSVPs");
+
     let pool = db::create_pool(&config.database_url, 5)
         .await
         .expect("Failed to create database pool");
@@ -107,6 +111,7 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .wrap(cors)
+            .wrap(openhack_common::metrics::MetricsMiddleware::new("core"))
             .wrap(actix_middleware::Logger::default())
             .app_data(pool_data.clone())
             .app_data(redis_conn_data.clone())
@@ -115,6 +120,7 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::configure)
             .route("/health", web::get().to(health_check))
             .route("/ready", web::get().to(readiness_check))
+            .route("/metrics", web::get().to(metrics_handler))
     })
     .bind(("0.0.0.0", config.port))?
     .run()
@@ -173,4 +179,10 @@ async fn readiness_check(pool: web::Data<sqlx::postgres::PgPool>) -> HttpRespons
             }))
         }
     }
+}
+
+async fn metrics_handler() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("text/plain; version=0.0.4")
+        .body(openhack_common::metrics::render_metrics())
 }

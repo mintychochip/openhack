@@ -8,7 +8,7 @@ interface User {
   id: string
   email: string
   name: string
-  role: "participant" | "judge" | "admin" | "sponsor"
+  roles: string[]
   avatarUrl?: string
   githubUsername?: string
   mfaEnabled: boolean
@@ -53,8 +53,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = async (email: string, password: string) => {
-    const data = await api.login(email, password)
-    setUser(data.user)
+    await api.login(email, password)
+    const userData = await api.getMe()
+    setUser(userData)
   }
 
   const logout = () => {

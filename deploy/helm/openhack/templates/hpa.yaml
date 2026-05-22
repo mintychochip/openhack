@@ -1,0 +1,167 @@
+{{- if .Values.autoscaling.enabled }}
+{{- $fullName := include "openhack.fullname" . -}}
+{{- $labels := include "openhack.labels" . -}}
+
+# Auth Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullName }}-auth-svc
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullName }}-auth-svc
+  minReplicas: {{ .Values.authService.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.authService.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.authService.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.authService.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.authService.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.authService.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+---
+{{- end }}
+
+{{- if .Values.autoscaling.enabled }}
+# Core Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullName }}-core-svc
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullName }}-core-svc
+  minReplicas: {{ .Values.coreService.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.coreService.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.coreService.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.coreService.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- end }}
+---
+{{- if .Values.autoscaling.enabled }}
+# Gateway Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullName }}-gateway-svc
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullName }}-gateway-svc
+  minReplicas: {{ .Values.gatewayService.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.gatewayService.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.gatewayService.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.gatewayService.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- end }}
+---
+{{- if .Values.autoscaling.enabled }}
+# Judging Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullName }}-judging-svc
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullName }}-judging-svc
+  minReplicas: {{ .Values.judgingService.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.judgingService.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.judgingService.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.judgingService.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- end }}
+---
+{{- if .Values.autoscaling.enabled }}
+# Leaderboard Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullName }}-leaderboard-svc
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullName }}-leaderboard-svc
+  minReplicas: {{ .Values.leaderboardService.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.leaderboardService.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.leaderboardService.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.leaderboardService.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- end }}
+---
+{{- if .Values.autoscaling.enabled }}
+# Mail Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullName }}-mail-svc
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullName }}-mail-svc
+  minReplicas: {{ .Values.mailService.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.mailService.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.mailService.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.mailService.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- end }}

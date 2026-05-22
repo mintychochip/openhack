@@ -1,4 +1,5 @@
 pub mod admin;
+pub mod gdpr;
 pub mod login;
 pub mod logout;
 pub mod me;
@@ -7,6 +8,7 @@ pub mod oauth;
 pub mod password;
 pub mod refresh;
 pub mod register;
+pub mod verification;
 
 use actix_web::web;
 
@@ -64,6 +66,13 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             )
             .route("/users", web::get().to(admin::list_users))
             .route("/users/{id}", web::delete().to(admin::delete_user))
-            .route("/users/{id}/role", web::post().to(admin::update_role)),
+            .route("/users/{id}/role", web::post().to(admin::update_role))
+            .route("/users/{id}/export", web::get().to(gdpr::export_user_data))
+            .route("/me/delete", web::post().to(gdpr::request_deletion))
+            .route("/verify-email/{token}", web::post().to(verification::verify_email))
+            .route(
+                "/verify-email/resend",
+                web::post().to(verification::resend_verification),
+            ),
     );
 }

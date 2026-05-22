@@ -625,7 +625,7 @@ metadata:
     {{- $labels | nindent 4 }}
     app.kubernetes.io/component: discord-bot-svc
 spec:
-  replicas: {{ .Values.discordBotService.replicaCount | default 1 }}
+  replicas: {{ .Values.discordBotService.replicaCount }}
   selector:
     matchLabels:
       {{- $labels | nindent 6 }}
@@ -638,22 +638,34 @@ spec:
     spec:
       containers:
         - name: discord-bot-svc
-          image: "{{ .Values.discordBotService.image.repository }}:{{ .Values.discordBotService.image.tag | default .Values.global.imageTag | default "latest" }}"
-          imagePullPolicy: {{ .Values.discordBotService.image.pullPolicy | default "IfNotPresent" }}
+          image: "{{ .Values.discordBotService.image.repository }}:{{ .Values.discordBotService.image.tag }}"
+          imagePullPolicy: {{ .Values.discordBotService.image.pullPolicy }}
           ports:
             - name: http
               containerPort: 3011
               protocol: TCP
-          resources:
-            requests:
-              memory: {{ .Values.discordBotService.resources.requests.memory | default "128Mi" }}
-              cpu: {{ .Values.discordBotService.resources.requests.cpu | default "50m" }}
-            limits:
-              memory: {{ .Values.discordBotService.resources.limits.memory | default "256Mi" }}
-              cpu: {{ .Values.discordBotService.resources.limits.cpu | default "200m" }}
           envFrom:
             - configMapRef:
                 name: {{ $fullName }}-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullName }}-secrets
+                  key: jwt-secret
+            - name: DISCORD_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullName }}-secrets
+                  key: discord-bot-token
+                  optional: true
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(DATABASE_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $fullName }}-config
+                  key: REDIS_URL
           livenessProbe:
             httpGet:
               path: /health
@@ -666,6 +678,8 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 5
+          resources:
+            {{- toYaml .Values.discordBotService.resources | nindent 12 }}
 ---
 # Frontend Deployment
 {{- if .Values.frontend.enabled }}

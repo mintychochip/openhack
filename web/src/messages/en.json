@@ -1,0 +1,193 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "update": "Update",
+    "submit": "Submit",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "close": "Close",
+    "confirm": "Confirm",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Info"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Sign In",
+      "noAccount": "Don't have an account?",
+      "register": "Sign Up"
+    },
+    "register": {
+      "title": "Create Account",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "name": "Full Name",
+      "submit": "Create Account",
+      "haveAccount": "Already have an account?",
+      "login": "Sign In"
+    },
+    "forgotPassword": {
+      "title": "Reset Password",
+      "email": "Email",
+      "submit": "Send Reset Link",
+      "back": "Back to Sign In"
+    },
+    "resetPassword": {
+      "title": "New Password",
+      "password": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "submit": "Reset Password"
+    },
+    "mfa": {
+      "title": "Two-Factor Authentication",
+      "code": "Authentication Code",
+      "submit": "Verify",
+      "backup": "Use a backup code"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back, {name}!",
+    "countdown": {
+      "title": "Hackathon Starts In",
+      "days": "Days",
+      "hours": "Hours",
+      "minutes": "Minutes",
+      "seconds": "Seconds"
+    },
+    "stats": {
+      "teams": "Teams",
+      "projects": "Projects",
+      "participants": "Participants",
+      "submissions": "Submissions"
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "profile": "Profile",
+      "settings": "Settings",
+      "teams": "Teams",
+      "projects": "Projects",
+      "events": "Events",
+      "leaderboard": "Leaderboard",
+      "judging": "Judging",
+      "sponsor": "Sponsor Booth",
+      "certificate": "Certificate",
+      "admin": "Admin"
+    }
+  },
+  "teams": {
+    "title": "Teams",
+    "create": "Create Team",
+    "myTeam": "My Team",
+    "joinTeam": "Join Team",
+    "leaveTeam": "Leave Team",
+    "inviteMember": "Invite Member",
+    "kickMember": "Remove Member",
+    "name": "Team Name",
+    "description": "Description",
+    "members": "Members",
+    "lookingForMembers": "Looking for team members",
+    "skills": "Skills",
+    "availability": "Availability"
+  },
+  "projects": {
+    "title": "Projects",
+    "create": "Create Project",
+    "submit": "Submit Project",
+    "myProjects": "My Projects",
+    "name": "Project Name",
+    "description": "Description",
+    "category": "Category",
+    "demoUrl": "Demo URL",
+    "repoUrl": "Repository URL",
+    "team": "Team"
+  },
+  "events": {
+    "title": "Events",
+    "rsvp": "RSVP",
+    "cancelRsvp": "Cancel RSVP",
+    "attendees": "Attendees",
+    "checkIn": "Check In",
+    "upcoming": "Upcoming Events",
+    "past": "Past Events"
+  },
+  "judging": {
+    "title": "Judging",
+    "assignments": "Assignments",
+    "scores": "Scores",
+    "rubric": "Rubric",
+    "submitScore": "Submit Score",
+    "criteria": "Criteria",
+    "score": "Score",
+    "notes": "Notes",
+    "history": "Judging History"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "rank": "Rank",
+    "team": "Team",
+    "score": "Score",
+    "previousRank": "Previous Rank"
+  },
+  "sponsor": {
+    "booth": {
+      "title": "Sponsor Booth",
+      "visit": "Visit Booth",
+      "message": "Send Message",
+      "poll": "Vote in Poll",
+      "resources": "Resources",
+      "prizes": "Prizes"
+    },
+    "prizes": {
+      "title": "Prizes",
+      "submit": "Submit for Prize",
+      "winner": "Winner"
+    }
+  },
+  "certificate": {
+    "title": "Certificate",
+    "download": "Download Certificate",
+    "verify": "Verify Certificate",
+    "verificationCode": "Verification Code"
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "users": "Users",
+    "teams": "Teams",
+    "projects": "Projects",
+    "events": "Events",
+    "hackathon": "Hackathon Settings",
+    "judging": "Judging",
+    "leaderboard": "Leaderboard",
+    "mail": "Email",
+    "webhooks": "Webhooks",
+    "analytics": "Analytics",
+    "checkin": "Check-in"
+  },
+  "validation": {
+    "required": "This field is required",
+    "email": "Please enter a valid email",
+    "password": "Password must be at least 8 characters",
+    "passwordMatch": "Passwords do not match",
+    "minLength": "Must be at least {min} characters",
+    "maxLength": "Must be at most {max} characters"
+  },
+  "errors": {
+    "notFound": "Page not found",
+    "unauthorized": "You are not authorized to view this page",
+    "serverError": "Something went wrong. Please try again later.",
+    "networkError": "Network error. Please check your connection."
+  }
+}

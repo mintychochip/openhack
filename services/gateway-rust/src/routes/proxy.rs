@@ -319,6 +319,45 @@ impl ProxyState {
             }));
         }
 
+        self.do_forward(req, body, prefix, config, &ip).await
+    }
+
+    pub async fn forward_with_redis(
+        &self,
+        req: HttpRequest,
+        body: web::Bytes,
+        prefix: &str,
+        limiter: &crate::rate_limiter::RedisRateLimiter,
+    ) -> HttpResponse {
+        let Some(config) = self.routes.get(prefix) else {
+            return HttpResponse::NotFound().json(serde_json::json!({
+                "error": "not_found",
+                "message": format!("No route for prefix: {prefix}")
+            }));
+        };
+
+        let ip = Self::client_ip(&req);
+        let route_key = prefix.trim_start_matches("/api/");
+        if !limiter.allow(&ip, route_key, config.rate_limit).await {
+            log::warn!("Rate limit exceeded for {ip} on {prefix}");
+            return HttpResponse::TooManyRequests().json(serde_json::json!({
+                "error": "rate_limit_exceeded",
+                "message": format!("Rate limit of {} requests per minute exceeded", config.rate_limit)
+            }));
+        }
+
+        self.do_forward(req, body, prefix, config, &ip).await
+    }
+
+    async fn do_forward(
+        &self,
+        req: HttpRequest,
+        body: web::Bytes,
+        prefix: &str,
+        config: &RouteConfig,
+        ip: &str,
+    ) -> HttpResponse {
+
         if body.len() > config.max_body_bytes {
             log::warn!("Body too large for {prefix}: {} bytes", body.len());
             return HttpResponse::PayloadTooLarge().json(serde_json::json!({
@@ -327,7 +366,8 @@ impl ProxyState {
             }));
         }
 
-        let upstream_url = format!("{}{}", config.upstream, req.path());
+        let path = req.path();
+        let upstream_url = format!("{}{}", config.upstream, path);
         let query = req.query_string();
         let upstream_url = if query.is_empty() {
             upstream_url
@@ -354,7 +394,7 @@ impl ProxyState {
             }
             fwd = fwd.insert_header((key.as_str(), value.clone()));
         }
-        fwd = fwd.insert_header(("x-forwarded-for", ip.clone()));
+        fwd = fwd.insert_header(("x-forwarded-for", ip));
         fwd = fwd.insert_header(("x-forwarded-proto", "http"));
 
         let resp = fwd.send_body(body).await;
@@ -390,49 +430,75 @@ macro_rules! proxy_handler {
     ($name:ident, $prefix:literal) => {
         pub async fn $name(
             state: web::Data<ProxyState>,
+            limiter: web::Data<crate::rate_limiter::RedisRateLimiter>,
             req: HttpRequest,
             body: web::Bytes,
         ) -> HttpResponse {
-            state.forward(req, body, $prefix).await
+            state.forward_with_redis(req, body, $prefix, limiter.get_ref()).await
         }
     };
 }
 
-proxy_handler!(proxy_auth, "/api/auth");
-proxy_handler!(proxy_core, "/api/core");
-proxy_handler!(proxy_judging, "/api/judging");
-proxy_handler!(proxy_leaderboard, "/api/leaderboard");
-proxy_handler!(proxy_mail, "/api/mail");
-proxy_handler!(proxy_notify, "/api/notify");
-proxy_handler!(proxy_ai, "/api/ai");
-proxy_handler!(proxy_analytics, "/api/analytics");
-proxy_handler!(proxy_sponsors, "/api/sponsors");
-proxy_handler!(proxy_media, "/api/media");
-proxy_handler!(proxy_discord_bot, "/api/discord-bot");
+proxy_handler!(auth_handler, "/api/auth");
+proxy_handler!(core_handler, "/api/core");
+proxy_handler!(judging_handler, "/api/judging");
+proxy_handler!(leaderboard_handler, "/api/leaderboard");
+proxy_handler!(mail_handler, "/api/mail");
+proxy_handler!(notify_handler, "/api/notify");
+proxy_handler!(ai_handler, "/api/ai");
+proxy_handler!(analytics_handler, "/api/analytics");
+proxy_handler!(sponsors_handler, "/api/sponsors");
+proxy_handler!(media_handler, "/api/media");
+proxy_handler!(discord_bot_handler, "/api/discord-bot");
 
-/// Health check via proxy — checks auth-svc /health.
+/// Composite health check — checks all downstream services.
 pub async fn proxy_health(state: web::Data<ProxyState>) -> HttpResponse {
-    let url = "http://auth-svc:3001/health";
-    match state.client.get(url).send().await {
-        Ok(resp) => {
-            let status = resp.status();
-            let mut builder = HttpResponse::build(status);
-            for (key, value) in resp.headers() {
-                let key_lower = key.as_str().to_lowercase();
-                if matches!(key_lower.as_str(), "connection" | "transfer-encoding") {
-                    continue;
-                }
-                builder.insert_header((key.as_str(), value.clone()));
+    let services = [
+        ("auth", "http://auth-svc:3001/health"),
+        ("core", "http://core-svc:3002/health"),
+        ("judging", "http://judging-svc:3003/health"),
+        ("leaderboard", "http://leaderboard-svc:3004/health"),
+        ("mail", "http://mail-svc:3005/health"),
+        ("notify", "http://notify-svc:3006/health"),
+        ("ai", "http://ai-svc:3007/health"),
+        ("analytics", "http://analytics-svc:3008/health"),
+        ("sponsors", "http://sponsors-svc:3009/health"),
+        ("media", "http://media-svc:3010/health"),
+        ("discord_bot", "http://discord-bot-svc:3011/health"),
+    ];
+
+    let mut results = serde_json::Map::new();
+    let mut all_healthy = true;
+
+    for (name, url) in &services {
+        match state.client.get(*url).timeout(Duration::from_secs(5)).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                results.insert((*name).to_string(), serde_json::Value::String("healthy".to_string()));
             }
-            builder.streaming(resp)
+            Ok(resp) => {
+                results.insert((*name).to_string(), serde_json::json!({ "status": "unhealthy", "code": resp.status().as_u16() }));
+                all_healthy = false;
+            }
+            Err(e) => {
+                log::warn!("Health check failed for {name}: {e}");
+                results.insert((*name).to_string(), serde_json::Value::String("unreachable".to_string()));
+                all_healthy = false;
+            }
         }
-        Err(e) => {
-            log::error!("Health check upstream error: {e}");
-            HttpResponse::ServiceUnavailable().json(serde_json::json!({
-                "error": "service_unavailable",
-                "message": "Health check failed"
-            }))
-        }
+    }
+
+    if all_healthy {
+        HttpResponse::Ok().json(serde_json::json!({
+            "status": "healthy",
+            "service": "gateway",
+            "downstream": results
+        }))
+    } else {
+        HttpResponse::ServiceUnavailable().json(serde_json::json!({
+            "status": "degraded",
+            "service": "gateway",
+            "downstream": results
+        }))
     }
 }
 

@@ -1,0 +1,239 @@
+{
+  "annotations": { "list": [] },
+  "title": "OpenHack Business Metrics",
+  "description": "Hackathon KPIs: registrations, team formation, project submissions, judging progress, voting. NOTE: Business metrics (auth_registrations_total, core_teams_created_total, etc.) require code changes to emit. Current panels show HTTP proxy metrics.",
+  "tags": ["openhack", "business"],
+  "timezone": "utc",
+  "schemaVersion": 16,
+  "version": 2,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "User Registrations",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "auth_registrations_total",
+          "legendFormat": "Total Registrations",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Registration Rate (Last Hour)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(auth_registrations_total[1h]) * 3600",
+          "legendFormat": "Registrations/hr",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Teams Created",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "core_teams_created_total",
+          "legendFormat": "Total Teams",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Avg Team Size",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "core_teams_created_total > 0",
+          "legendFormat": "Avg Members",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Project Submissions Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "core_projects_submitted_total",
+          "legendFormat": "Projects Submitted",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Judging Progress",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "expr": "judging_scores_submitted_total / judging_assignments_created_total * 100",
+          "legendFormat": "Completion %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              { "color": "yellow", "value": 0 },
+              { "color": "blue", "value": 50 },
+              { "color": "green", "value": 100 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Voting Activity",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "targets": [
+        {
+          "expr": "rate(leaderboard_votes_total[5m])",
+          "legendFormat": "Votes/sec",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "VPS"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Total Votes Cast",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "targets": [
+        {
+          "expr": "leaderboard_votes_total",
+          "legendFormat": "Total Votes",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "HTTP Request Rate by Service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+      "targets": [
+        {
+          "expr": "rate(http_requests_total[5m])",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      },
+      "description": "Proxy metric - shows HTTP traffic while business metrics are being implemented"
+    },
+    {
+      "id": 10,
+      "title": "HTTP Error Rate by Service",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 30 },
+      "targets": [
+        {
+          "expr": "rate(http_requests_failed[5m]) / rate(http_requests_total[5m]) * 100",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        }
+      },
+      "description": "Proxy metric - shows HTTP errors while business metrics are being implemented"
+    },
+    {
+      "id": 11,
+      "title": "Slowest Services (p99 Latency)",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 30 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
+      "description": "Proxy metric - shows latency while business metrics are being implemented"
+    },
+    {
+      "id": 12,
+      "title": "Implementation Notes",
+      "type": "text",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 38 },
+      "options": {
+        "content": "### Business Metrics Implementation Required\n\nThe following metrics need to be added to the Rust services:\n\n| Service | Metrics Needed |\n|---------|----------------|\n| auth-svc | `auth_registrations_total`, `auth_logins_total`, `auth_login_failures_total`, `auth_jwt_issued_total` |\n| core-svc | `core_teams_created_total`, `core_projects_submitted_total`, `core_event_rsvps_total` |\n| judging-svc | `judging_scores_submitted_total`, `judging_assignments_completed_total`, `judging_assignments_created_total` |\n| leaderboard-svc | `leaderboard_votes_total`, `leaderboard_rankings_updated_total` |\n\nSee `openhack-common/src/metrics.rs` for the pattern to add custom counters.",
+        "mode": "markdown"
+      }
+    }
+  ]
+}

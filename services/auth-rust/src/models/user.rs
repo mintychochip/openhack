@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 /// Represents a user in the auth.users table.
@@ -39,6 +40,12 @@ pub struct User {
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
     pub last_login_at: Option<NaiveDateTime>,
+    pub failed_login_attempts: i32,
+    pub locked_until: Option<NaiveDateTime>,
+    pub email_verification_token: Option<Uuid>,
+    pub email_verification_token_expires_at: Option<NaiveDateTime>,
+    pub deletion_requested_at: Option<NaiveDateTime>,
+    pub deletion_scheduled_at: Option<NaiveDateTime>,
 }
 
 /// Public user profile returned in API responses.
@@ -56,7 +63,7 @@ pub struct User {
 /// # Side Effects
 ///
 /// None.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct UserProfile {
     pub id: Uuid,
     pub email: String,
@@ -127,7 +134,7 @@ impl From<User> for UserProfile {
 /// # Side Effects
 ///
 /// None.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct RegisterRequest {
     pub email: String,
     pub password: String,
@@ -148,13 +155,15 @@ pub struct RegisterRequest {
 /// # Side Effects
 ///
 /// None.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct RegisterResponse {
     pub id: Uuid,
     pub email: String,
     pub name: String,
     #[serde(rename = "createdAt")]
     pub created_at: Option<NaiveDateTime>,
+    #[serde(rename = "verificationToken", skip_serializing_if = "Option::is_none")]
+    pub verification_token: Option<Uuid>,
 }
 
 /// Request body for user login.

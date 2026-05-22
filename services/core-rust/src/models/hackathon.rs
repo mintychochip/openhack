@@ -22,6 +22,10 @@ pub struct HackathonConfig {
     pub theme_colors: Option<serde_json::Value>,
     pub social_links: Option<serde_json::Value>,
     pub registration_open: Option<bool>,
+    pub custom_css: Option<String>,
+    pub daisyui_theme_preset: Option<String>,
+    pub daisyui_custom_theme: Option<serde_json::Value>,
+    pub font_config: Option<serde_json::Value>,
 }
 
 /// Request body for updating hackathon configuration.
@@ -40,6 +44,10 @@ pub struct HackathonConfigUpdate {
     pub theme_colors: Option<serde_json::Value>,
     pub social_links: Option<serde_json::Value>,
     pub registration_open: Option<bool>,
+    pub custom_css: Option<String>,
+    pub daisyui_theme_preset: Option<String>,
+    pub daisyui_custom_theme: Option<serde_json::Value>,
+    pub font_config: Option<serde_json::Value>,
 }
 
 /// Response body for hackathon configuration.
@@ -60,6 +68,10 @@ pub struct HackathonConfigResponse {
     pub theme_colors: serde_json::Value,
     pub social_links: serde_json::Value,
     pub registration_open: bool,
+    pub custom_css: String,
+    pub daisyui_theme_preset: String,
+    pub daisyui_custom_theme: serde_json::Value,
+    pub font_config: serde_json::Value,
 }
 
 impl From<HackathonConfig> for HackathonConfigResponse {
@@ -75,6 +87,10 @@ impl From<HackathonConfig> for HackathonConfigResponse {
             theme_colors: c.theme_colors.unwrap_or(serde_json::json!({})),
             social_links: c.social_links.unwrap_or(serde_json::json!({})),
             registration_open: c.registration_open.unwrap_or(true),
+            custom_css: c.custom_css.unwrap_or_default(),
+            daisyui_theme_preset: c.daisyui_theme_preset.unwrap_or_else(|| "light".to_string()),
+            daisyui_custom_theme: c.daisyui_custom_theme.unwrap_or(serde_json::json!({})),
+            font_config: c.font_config.unwrap_or(serde_json::json!({})),
         }
     }
 }

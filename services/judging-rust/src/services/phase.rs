@@ -1,8 +1,9 @@
 use crate::errors::JudgingError;
 use crate::models::advancement::{Advancement, AdvancementListResponse};
 use crate::models::phase::{
-    Phase, PhaseCreate, PhaseLeaderboardEntry, PhaseLeaderboardResponse, PhaseListResponse,
-    PhaseQuery, PhaseResponse, PhaseUpdate,
+    AdvancedTeam, Phase, PhaseAdvanceRequest, PhaseAdvanceResponse, PhaseCreate,
+    PhaseLeaderboardEntry, PhaseLeaderboardResponse, PhaseListResponse, PhaseQuery,
+    PhaseResponse, PhaseUpdate,
 };
 use rust_decimal::prelude::ToPrimitive;
 use sqlx::{PgPool, Row};
@@ -267,6 +268,123 @@ impl PhaseService {
         Ok(AdvancementListResponse {
             advancements: rows,
             total,
+        })
+    }
+
+    pub async fn advance_phase(
+        pool: &PgPool,
+        phase_id: Uuid,
+        request: &PhaseAdvanceRequest,
+    ) -> Result<PhaseAdvanceResponse, JudgingError> {
+        let phase = sqlx::query_as::<_, Phase>("SELECT * FROM judging.phases WHERE id = $1")
+            .bind(phase_id)
+            .fetch_optional(pool)
+            .await?
+            .ok_or_else(|| JudgingError::PhaseNotFound(phase_id.to_string()))?;
+
+        if phase.status != "finalized" {
+            return Err(JudgingError::PhaseNotFinalized(phase_id.to_string()));
+        }
+
+        let advancement_count = request
+            .advancement_count
+            .or(phase.advancement_count)
+            .unwrap_or(0);
+
+        if advancement_count <= 0 {
+            return Err(JudgingError::Validation(
+                "advancement_count must be greater than 0".to_string(),
+            ));
+        }
+
+        let to_phase_id = phase.parent_phase_id;
+
+        let leaderboard_rows = sqlx::query(
+            "SELECT a.project_id, SUM(s.total_score) as total_score, COUNT(s.id) as score_count,
+                    ROW_NUMBER() OVER (ORDER BY SUM(s.total_score) DESC) as rank
+             FROM judging.scores s
+             JOIN judging.assignments a ON s.assignment_id = a.id
+             WHERE a.phase_id = $1 AND s.total_score IS NOT NULL
+             GROUP BY a.project_id
+             ORDER BY total_score DESC
+             LIMIT $2",
+        )
+        .bind(phase_id)
+        .bind(advancement_count)
+        .fetch_all(pool)
+        .await?;
+
+        let mut advanced_teams = Vec::new();
+
+        for row in leaderboard_rows {
+            let project_id: Uuid = row.get("project_id");
+            let total_score: Option<rust_decimal::Decimal> = row.get("total_score");
+            let rank: i64 = row.get("rank");
+
+            let total_score_f64 = total_score
+                .map(|d| d.to_f64().unwrap_or(0.0))
+                .unwrap_or(0.0);
+
+            let team_id = sqlx::query_scalar::<_, Uuid>(
+                "SELECT team_id FROM core.projects WHERE id = $1",
+            )
+            .bind(project_id)
+            .fetch_optional(pool)
+            .await?
+            .unwrap_or_else(Uuid::nil);
+
+            sqlx::query(
+                "INSERT INTO judging.phase_advancements (from_phase_id, to_phase_id, team_id, project_id, rank_in_phase)
+                 VALUES ($1, $2, $3, $4, $5)
+                 ON CONFLICT (from_phase_id, to_phase_id, team_id) DO NOTHING",
+            )
+            .bind(phase_id)
+            .bind(to_phase_id)
+            .bind(team_id)
+            .bind(project_id)
+            .bind(i32::try_from(rank).unwrap_or(0))
+            .execute(pool)
+            .await?;
+
+            let mut assignments_created = 0i32;
+
+            if let Some(ref judge_ids) = request.judge_ids {
+                if let Some(next_phase_id) = to_phase_id {
+                    for judge_id in judge_ids {
+                        let result = sqlx::query(
+                            "INSERT INTO judging.assignments (judge_id, project_id, rubric_id, phase_id, status)
+                             VALUES ($1, $2, $3, $4, 'pending') RETURNING id",
+                        )
+                        .bind(judge_id)
+                        .bind(project_id)
+                        .bind(request.rubric_id)
+                        .bind(next_phase_id)
+                        .fetch_optional(pool)
+                        .await;
+
+                        if let Ok(Some(_)) = result {
+                            assignments_created += 1;
+                        }
+                    }
+                }
+            }
+
+            advanced_teams.push(AdvancedTeam {
+                team_id,
+                project_id,
+                rank_in_phase: i32::try_from(rank).unwrap_or(0),
+                total_score: total_score_f64,
+                assignments_created,
+            });
+        }
+
+        let total_advanced = i64::try_from(advanced_teams.len()).unwrap_or(i64::MAX);
+
+        Ok(PhaseAdvanceResponse {
+            from_phase_id: phase_id,
+            to_phase_id,
+            advanced_teams,
+            total_advanced,
         })
     }
 }

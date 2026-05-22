@@ -228,6 +228,12 @@ pub fn generate_override(app: &App, output_dir: &Path) -> Result<(), Box<dyn std
                 out.push_str("      SERVICE_PORT: \"8000\"\n");
                 out.push_str("      RUST_LOG: info\n");
             }
+            ServiceName::DiscordBot => {
+                out.push_str(&format!("      JWT_SECRET: {}\n", app.jwt_secret));
+                out.push_str("      GATEWAY_URL: http://gateway-svc:8000\n");
+                out.push_str("      SERVICE_PORT: \"3011\"\n");
+                out.push_str("      RUST_LOG: info\n");
+            }
         }
 
         out.push_str(&format!("    ports:\n      - \"{}:{}\"\n", port, port));

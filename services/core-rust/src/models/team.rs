@@ -143,3 +143,18 @@ pub struct MemberInviteRequest {
 pub struct InviteAcceptRequest {
     pub invite_id: Uuid,
 }
+
+/// Response for team list with pagination.
+#[derive(Debug, Clone, Serialize)]
+pub struct TeamListResponse {
+    pub teams: Vec<TeamResponse>,
+    pub total: i64,
+}
+
+/// Query for teams seeking members.
+#[derive(Debug, Clone, Deserialize)]
+pub struct TeamSeekingQuery {
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
+    pub skills: Option<String>,
+}

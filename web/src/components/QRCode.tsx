@@ -24,6 +24,7 @@ export function QRCode({ value, size = 256, className = "" }: QRCodeProps) {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`;
 
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={qrUrl}
       alt="QR Code"

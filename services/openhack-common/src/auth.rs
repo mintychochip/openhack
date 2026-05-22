@@ -36,6 +36,21 @@ impl AuthUser {
     pub fn has_role(&self, role: &str) -> bool {
         self.roles.iter().any(|r| r == role)
     }
+
+    #[must_use]
+    pub fn is_judge(&self) -> bool {
+        self.roles.iter().any(|r| r == "judge")
+    }
+
+    #[must_use]
+    pub fn is_judge_or_admin(&self) -> bool {
+        self.roles.iter().any(|r| r == "judge" || r == "admin" || r == "organizer")
+    }
+
+    #[must_use]
+    pub fn is_sponsor(&self) -> bool {
+        self.roles.iter().any(|r| r == "sponsor")
+    }
 }
 
 impl FromRequest for AuthUser {

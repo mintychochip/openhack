@@ -1,13 +1,24 @@
+use crate::middleware::auth::{get_auth_user, require_admin_or_organizer};
 use crate::models::message::{BulkSendRequest, BulkSendResponse, SendRequest, SendResponse};
 use crate::services::mail::MailService;
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpRequest, HttpResponse};
 use sqlx::PgPool;
 
 pub async fn send_email(
+    req: HttpRequest,
     pool: web::Data<PgPool>,
     smtp: web::Data<crate::services::smtp::SmtpProvider>,
     body: web::Json<SendRequest>,
 ) -> HttpResponse {
+    let user = match get_auth_user(&req) {
+        Ok(u) => u,
+        Err(e) => return e.to_http_response(),
+    };
+
+    if let Err(e) = require_admin_or_organizer(&user) {
+        return e.to_http_response();
+    }
+
     let req = body.into_inner();
     let body_html = req.body_html.unwrap_or_default();
 
@@ -35,10 +46,20 @@ pub async fn send_email(
 }
 
 pub async fn send_bulk(
+    req: HttpRequest,
     pool: web::Data<PgPool>,
     smtp: web::Data<crate::services::smtp::SmtpProvider>,
     body: web::Json<BulkSendRequest>,
 ) -> HttpResponse {
+    let user = match get_auth_user(&req) {
+        Ok(u) => u,
+        Err(e) => return e.to_http_response(),
+    };
+
+    if let Err(e) = require_admin_or_organizer(&user) {
+        return e.to_http_response();
+    }
+
     let req = body.into_inner();
     let emails_json: Vec<serde_json::Value> = req
         .emails

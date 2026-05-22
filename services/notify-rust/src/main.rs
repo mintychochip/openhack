@@ -182,6 +182,7 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .wrap(cors)
+            .wrap(openhack_common::metrics::MetricsMiddleware::new("notify"))
             .wrap(actix_middleware::Logger::default())
             .app_data(pool_data.clone())
             .app_data(jwt_secret_data.clone())
@@ -189,8 +190,15 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::configure)
             .route("/health", web::get().to(health_check))
             .route("/ready", web::get().to(ready_check))
+            .route("/metrics", web::get().to(metrics_handler))
     })
     .bind(("0.0.0.0", cfg.port))?
     .run()
     .await
+}
+
+async fn metrics_handler() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("text/plain; version=0.0.4")
+        .body(openhack_common::metrics::render_metrics())
 }

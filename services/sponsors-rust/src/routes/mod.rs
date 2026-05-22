@@ -1,4 +1,5 @@
 pub mod booths;
+pub mod interactivity;
 pub mod prizes;
 pub mod sponsor;
 pub mod submissions;
@@ -63,6 +64,58 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route(
                 "/booths/{id}/analytics",
                 web::get().to(booths::get_analytics),
+            )
+            .route(
+                "/booths/{id}/visitors",
+                web::post().to(interactivity::record_visit),
+            )
+            .route(
+                "/booths/{id}/visitors",
+                web::get().to(interactivity::get_visitors),
+            )
+            .route(
+                "/visits/{id}/complete",
+                web::post().to(interactivity::update_visit_duration),
+            )
+            .route(
+                "/booths/{id}/messages",
+                web::post().to(interactivity::create_message),
+            )
+            .route(
+                "/booths/{id}/messages",
+                web::get().to(interactivity::get_messages),
+            )
+            .route(
+                "/messages/{id}/read",
+                web::post().to(interactivity::mark_message_read),
+            )
+            .route(
+                "/booths/{id}/polls",
+                web::post().to(interactivity::create_poll),
+            )
+            .route(
+                "/booths/{id}/polls",
+                web::get().to(interactivity::get_polls),
+            )
+            .route(
+                "/polls/{id}/vote",
+                web::post().to(interactivity::vote_poll),
+            )
+            .route(
+                "/booths/{id}/resources",
+                web::post().to(interactivity::create_resource),
+            )
+            .route(
+                "/booths/{id}/resources",
+                web::get().to(interactivity::get_resources),
+            )
+            .route(
+                "/resources/{id}/download",
+                web::post().to(interactivity::download_resource),
+            )
+            .route(
+                "/booths/{id}/analytics/interactivity",
+                web::get().to(interactivity::get_analytics),
             )
             .route(
                 "/booths/{booth_id}/prizes",

@@ -28,9 +28,31 @@ spec:
     - host: {{ .host | quote }}
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType }}
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "openhack.fullname" $ }}-gateway
+                port:
+                  number: 8000
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "openhack.fullname" $ }}-gateway
+                port:
+                  number: 8000
+          {{- if $.Values.frontend.enabled }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "openhack.fullname" $ }}-web
+                port:
+                  number: 3000
+          {{- else }}
+          - path: /
+            pathType: Prefix
             backend:
               service:
                 name: {{ include "openhack.fullname" $ }}-gateway

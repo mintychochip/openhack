@@ -34,6 +34,8 @@ pub struct Config {
     pub _s3_secret_key: String,
     pub _log_level: String,
     pub rust_log: String,
+    pub jwt_secret: String,
+    pub cors_allowed_origins: Option<Vec<String>>,
 }
 
 impl Config {
@@ -82,6 +84,15 @@ impl Config {
         let log_level = env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
         let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
 
+        let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| {
+            log::warn!("JWT_SECRET not set, using default (INSECURE for production)");
+            "change-me-in-production-32ch".to_string()
+        });
+
+        let cors_allowed_origins = env::var("CORS_ALLOWED_ORIGINS")
+            .ok()
+            .map(|s| s.split(',').map(|s| s.trim().to_string()).collect());
+
         Self {
             database_url,
             port,
@@ -95,6 +106,8 @@ impl Config {
             _s3_secret_key: s3_secret_key,
             _log_level: log_level,
             rust_log,
+            jwt_secret,
+            cors_allowed_origins,
         }
     }
 }

@@ -23,6 +23,8 @@ pub struct Config {
     pub _redis_url: String,
     pub port: u16,
     pub _rust_log: String,
+    pub jwt_secret: String,
+    pub cors_allowed_origins: Option<Vec<String>>,
 }
 
 impl Config {
@@ -53,11 +55,22 @@ impl Config {
             .expect("SERVICE_PORT/PORT must be a valid u16");
         let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
 
+        let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| {
+            log::warn!("JWT_SECRET not set, using default (INSECURE for production)");
+            "change-me-in-production-32ch".to_string()
+        });
+
+        let cors_allowed_origins = env::var("CORS_ALLOWED_ORIGINS")
+            .ok()
+            .map(|s| s.split(',').map(|s| s.trim().to_string()).collect());
+
         Self {
             database_url,
             _redis_url: redis_url,
             port,
             _rust_log: rust_log,
+            jwt_secret,
+            cors_allowed_origins,
         }
     }
 }

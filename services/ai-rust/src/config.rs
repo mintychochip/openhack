@@ -35,6 +35,8 @@ pub struct Config {
     pub feature_idea_generator: bool,
     pub feature_team_matcher: bool,
     pub feature_code_review: bool,
+    pub jwt_secret: String,
+    pub cors_allowed_origins: Option<Vec<String>>,
 }
 
 impl Config {
@@ -97,6 +99,15 @@ impl Config {
             .map(|v| v == "true" || v == "1")
             .unwrap_or(false);
 
+        let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| {
+            log::warn!("JWT_SECRET not set, using default (INSECURE for production)");
+            "change-me-in-production-32ch".to_string()
+        });
+
+        let cors_allowed_origins = env::var("CORS_ALLOWED_ORIGINS")
+            .ok()
+            .map(|s| s.split(',').map(|s| s.trim().to_string()).collect());
+
         Self {
             database_url,
             redis_url,
@@ -113,6 +124,8 @@ impl Config {
             feature_idea_generator,
             feature_team_matcher,
             feature_code_review,
+            jwt_secret,
+            cors_allowed_origins,
         }
     }
 }

@@ -39,7 +39,10 @@ pub async fn create_team(
     )
     .await
     {
-        Ok(team) => HttpResponse::Created().json(team),
+        Ok(team) => {
+            openhack_common::metrics::inc_business_counter("core_teams_created_total");
+            HttpResponse::Created().json(team)
+        }
         Err(e) => e.to_http_response(),
     }
 }

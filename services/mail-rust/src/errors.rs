@@ -14,6 +14,8 @@ pub enum MailError {
     MessageNotFound(String),
     #[error("Broadcast not found: {0}")]
     BroadcastNotFound(String),
+    #[error("Not found: {0}: {1}")]
+    NotFound(String, String),
     #[allow(dead_code)]
     #[error("Invalid email: {0}")]
     InvalidEmail(String),
@@ -34,6 +36,10 @@ pub enum MailError {
     #[allow(dead_code)]
     #[error("Internal error: {0}")]
     Internal(String),
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
 }
 
 #[derive(Serialize)]
@@ -46,13 +52,20 @@ impl MailError {
         match self {
             MailError::TemplateNotFound(_)
             | MailError::MessageNotFound(_)
-            | MailError::BroadcastNotFound(_) => HttpResponse::NotFound().json(ErrorBody {
+            | MailError::BroadcastNotFound(_)
+            | MailError::NotFound(_, _) => HttpResponse::NotFound().json(ErrorBody {
                 error: self.to_string(),
             }),
             MailError::InvalidEmail(_) | MailError::Validation(_) => HttpResponse::BadRequest()
                 .json(ErrorBody {
                     error: self.to_string(),
                 }),
+            MailError::Unauthorized(_) => HttpResponse::Unauthorized().json(ErrorBody {
+                error: self.to_string(),
+            }),
+            MailError::Forbidden(_) => HttpResponse::Forbidden().json(ErrorBody {
+                error: self.to_string(),
+            }),
             _ => {
                 log::error!("Internal error: {self:?}");
                 HttpResponse::InternalServerError().json(ErrorBody {

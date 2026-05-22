@@ -72,6 +72,20 @@ helm upgrade --install "$RELEASE_NAME" prometheus-community/kube-prometheus-stac
   --timeout 10m \
   --wait
 
+# Install Loki stack for log aggregation (if enabled in values)
+if grep -q "loki:" "$VALUES_FILE" && grep -A1 "loki:" "$VALUES_FILE" | grep -q "enabled: true"; then
+    echo "📦 Installing Loki stack..."
+    helm upgrade --install loki-stack grafana/loki-stack \
+      --namespace "$NAMESPACE" \
+      --values "$VALUES_FILE" \
+      --timeout 10m \
+      --wait
+fi
+
+# Apply exporters (postgres, redis, blackbox)
+echo "📦 Applying infrastructure exporters..."
+kubectl apply -f "${SCRIPT_DIR}/exporters/" --namespace default
+
 # Apply ServiceMonitors for OpenHack services
 echo "📦 Applying ServiceMonitors..."
 kubectl apply -f "${SCRIPT_DIR}/prometheus/servicemonitors.yaml" --namespace "$NAMESPACE"
@@ -116,8 +130,14 @@ echo "🔔 Alertmanager:"
 echo "   kubectl port-forward svc/$RELEASE_NAME-alertmanager 9093:80 --namespace $NAMESPACE"
 echo "   URL: http://localhost:9093"
 echo ""
+echo "🪵  Loki:"
+echo "   kubectl port-forward svc/loki-stack 3100:80 --namespace $NAMESPACE"
+echo "   URL: http://localhost:3100"
+echo ""
 echo "📚 Next steps:"
 echo "   1. Import dashboards from deploy/monitoring/grafana/"
 echo "   2. Configure alert receivers in Alertmanager"
 echo "   3. Verify metrics are being collected"
+echo "   4. Check Loki logs: kubectl logs -l app=loki -n $NAMESPACE"
+echo "   5. Verify exporters: kubectl get pods -l app=postgres-exporter,redis-exporter,blackbox-exporter"
 echo ""

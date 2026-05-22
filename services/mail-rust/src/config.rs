@@ -6,6 +6,8 @@ pub struct Config {
     pub redis_url: Option<String>,
     pub port: u16,
     pub rust_log: String,
+    pub jwt_secret: String,
+    pub cors_allowed_origins: Option<Vec<String>>,
     pub smtp_host: String,
     pub smtp_port: u16,
     pub smtp_user: String,
@@ -26,6 +28,15 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Self {
+        let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| {
+            log::warn!("JWT_SECRET not set, using default (INSECURE for production)");
+            "change-me-in-production-32ch".to_string()
+        });
+
+        let cors_allowed_origins = env::var("CORS_ALLOWED_ORIGINS")
+            .ok()
+            .map(|s| s.split(',').map(|s| s.trim().to_string()).collect());
+
         Self {
             database_url: env::var("DATABASE_URL").expect("DATABASE_URL is required"),
             redis_url: env::var("REDIS_URL").ok(),
@@ -35,6 +46,8 @@ impl Config {
                 .parse()
                 .expect("PORT must be a number"),
             rust_log: env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
+            jwt_secret,
+            cors_allowed_origins,
             smtp_host: env::var("SMTP_HOST").unwrap_or_else(|_| "postfix".into()),
             smtp_port: env::var("SMTP_PORT")
                 .unwrap_or_else(|_| "25".into())
@@ -50,7 +63,12 @@ impl Config {
                 .unwrap_or_else(|_| "10485760".into())
                 .parse()
                 .unwrap_or(10_485_760),
-            app_domain: env::var("APP_DOMAIN").unwrap_or_else(|_| "http://localhost:3000".into()),
+            app_domain: env::var("APP_DOMAIN").unwrap_or_else(|_| {
+                if cfg!(not(debug_assertions)) {
+                    log::warn!("APP_DOMAIN defaults to localhost — set APP_DOMAIN for production");
+                }
+                "http://localhost:3000".into()
+            }),
             hackathon_name: env::var("HACKATHON_NAME").unwrap_or_else(|_| "OpenHack".into()),
             hackathon_start_date: env::var("HACKATHON_START_DATE").unwrap_or_default(),
         }

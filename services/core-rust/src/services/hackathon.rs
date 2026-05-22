@@ -23,7 +23,7 @@ impl HackathonService {
     /// - Reads from `core.hackathon_config` (database read).
     pub async fn get_config(pool: &PgPool) -> Result<HackathonConfigResponse, CoreError> {
         let row = sqlx::query_as::<_, HackathonConfig>(
-            "SELECT id, name, tagline, start_time, end_time, timezone, logo_url, theme_colors, social_links, registration_open FROM core.hackathon_config LIMIT 1",
+            "SELECT id, name, tagline, start_time, end_time, timezone, logo_url, theme_colors, social_links, registration_open, custom_css, daisyui_theme_preset, daisyui_custom_theme, font_config FROM core.hackathon_config LIMIT 1",
         )
         .fetch_optional(pool)
         .await?
@@ -89,6 +89,22 @@ impl HackathonService {
         }
         if data.registration_open.is_some() {
             updates.push(format!("registration_open = ${param_idx}"));
+            param_idx += 1;
+        }
+        if data.custom_css.is_some() {
+            updates.push(format!("custom_css = ${param_idx}"));
+            param_idx += 1;
+        }
+        if data.daisyui_theme_preset.is_some() {
+            updates.push(format!("daisyui_theme_preset = ${param_idx}"));
+            param_idx += 1;
+        }
+        if data.daisyui_custom_theme.is_some() {
+            updates.push(format!("daisyui_custom_theme = ${param_idx}"));
+            param_idx += 1;
+        }
+        if data.font_config.is_some() {
+            updates.push(format!("font_config = ${param_idx}"));
         }
 
         if updates.is_empty() {
@@ -96,7 +112,7 @@ impl HackathonService {
         }
 
         let sql = format!(
-            "UPDATE core.hackathon_config SET {} WHERE id = (SELECT id FROM core.hackathon_config LIMIT 1) RETURNING id, name, tagline, start_time, end_time, timezone, logo_url, theme_colors, social_links, registration_open",
+            "UPDATE core.hackathon_config SET {} WHERE id = (SELECT id FROM core.hackathon_config LIMIT 1) RETURNING id, name, tagline, start_time, end_time, timezone, logo_url, theme_colors, social_links, registration_open, custom_css, daisyui_theme_preset, daisyui_custom_theme, font_config",
             updates.join(", ")
         );
 
@@ -127,6 +143,18 @@ impl HackathonService {
             query = query.bind(v);
         }
         if let Some(ref v) = data.registration_open {
+            query = query.bind(v);
+        }
+        if let Some(ref v) = data.custom_css {
+            query = query.bind(v);
+        }
+        if let Some(ref v) = data.daisyui_theme_preset {
+            query = query.bind(v);
+        }
+        if let Some(ref v) = data.daisyui_custom_theme {
+            query = query.bind(v);
+        }
+        if let Some(ref v) = data.font_config {
             query = query.bind(v);
         }
 

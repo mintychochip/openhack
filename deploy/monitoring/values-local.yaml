@@ -1,0 +1,139 @@
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    externalUrl: "http://openhack.local/prometheus"
+    routePrefix: "/prometheus"
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+      limits:
+        memory: 512Mi
+        cpu: 500m
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - openhack.local
+    paths:
+      - /prometheus
+
+grafana:
+  adminPassword: admin
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: default
+          orgId: 1
+          folder: ""
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+  dashboardsConfigMaps:
+    default: openhack-dashboards
+  grafana.ini:
+    server:
+      root_url: "http://openhack.local/grafana"
+      serve_from_sub_path: true
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - openhack.local
+    path: /grafana
+
+alertmanager:
+  enabled: false
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+kubelet:
+  enabled: true
+
+# Kind cluster limitations - control-plane components bind to 127.0.0.1
+# and are unreachable from the pod network. Disable to avoid DOWN targets.
+# DO NOT apply these overrides to production clusters.
+kubeEtcd:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeControllerManager:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+# Loki configuration for log aggregation
+loki:
+  enabled: true
+  isDefaultGateway: false
+  extraArgs:
+    - -config.file=/etc/loki/local-config.yaml
+  persistence:
+    enabled: true
+    size: 2Gi
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: 100m
+
+promtail:
+  enabled: true
+  config:
+    lokiAddress: http://loki-stack:3100/loki/api/v1/push
+    snippets:
+      pipelineStages:
+        - cri: {}
+      relabelConfigs:
+        - action: replace
+          source_labels:
+            - __meta_kubernetes_pod_label_app
+          target_label: app
+        - action: replace
+          source_labels:
+            - __meta_kubernetes_namespace
+          target_label: namespace
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 25m
+    limits:
+      memory: 128Mi
+      cpu: 50m
+
+grafana:
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki-stack:3100
+      access: proxy
+      isDefault: false

@@ -18,6 +18,8 @@ pub enum JudgingError {
     PhaseNotFound(String),
     #[error("Phase is closed: {0}")]
     PhaseClosed(String),
+    #[error("Phase is not finalized: {0}")]
+    PhaseNotFinalized(String),
     #[error("Score validation error: {0}")]
     ScoreValidation(String),
     #[error("Normalization error: {0}")]
@@ -26,6 +28,10 @@ pub enum JudgingError {
     Validation(String),
     #[error("Internal error: {0}")]
     Internal(String),
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
 }
 
 #[derive(Serialize)]
@@ -42,14 +48,22 @@ impl JudgingError {
             | JudgingError::PhaseNotFound(_) => HttpResponse::NotFound().json(ErrorBody {
                 error: self.to_string(),
             }),
-            JudgingError::PhaseClosed(_) => HttpResponse::Conflict().json(ErrorBody {
-                error: self.to_string(),
-            }),
+            JudgingError::PhaseClosed(_) | JudgingError::PhaseNotFinalized(_) => {
+                HttpResponse::Conflict().json(ErrorBody {
+                    error: self.to_string(),
+                })
+            }
             JudgingError::ScoreValidation(_) | JudgingError::Validation(_) => {
                 HttpResponse::BadRequest().json(ErrorBody {
                     error: self.to_string(),
                 })
             }
+            JudgingError::Unauthorized(_) => HttpResponse::Unauthorized().json(ErrorBody {
+                error: self.to_string(),
+            }),
+            JudgingError::Forbidden(_) => HttpResponse::Forbidden().json(ErrorBody {
+                error: self.to_string(),
+            }),
             _ => {
                 log::error!("Internal error: {self:?}");
                 HttpResponse::InternalServerError().json(ErrorBody {

@@ -58,6 +58,10 @@ impl Config {
         let openhack_domain = std::env::var("OPENHACK_DOMAIN")
             .unwrap_or_else(|_| "http://localhost:3000".to_string());
 
+        if cfg!(not(debug_assertions)) && openhack_domain.contains("localhost") {
+            log::warn!("OPENHACK_DOMAIN defaults to localhost — set OPENHACK_DOMAIN for production");
+        }
+
         Ok(Self {
             base,
             lambda_internal_token,

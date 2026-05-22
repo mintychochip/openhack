@@ -40,6 +40,11 @@ pub enum AppError {
 
     #[error("Internal server error: {0}")]
     _InternalError(String),
+
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
 }
 
 impl actix_web::ResponseError for AppError {
@@ -59,6 +64,8 @@ impl actix_web::ResponseError for AppError {
             AppError::FileTooLarge(_) => StatusCode::PAYLOAD_TOO_LARGE,
             AppError::InvalidFileType(_) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            AppError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+            AppError::Forbidden(_) => StatusCode::FORBIDDEN,
             AppError::UploadFailed(_)
             | AppError::StorageError(_)
             | AppError::DatabaseError(_)

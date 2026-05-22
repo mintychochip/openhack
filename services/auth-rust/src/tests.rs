@@ -48,6 +48,12 @@ mod tests {
             created_at: None,
             updated_at: None,
             last_login_at: None,
+            failed_login_attempts: 0,
+            locked_until: None,
+            email_verification_token: None,
+            email_verification_token_expires_at: None,
+            deletion_requested_at: None,
+            deletion_scheduled_at: None,
         }
     }
 

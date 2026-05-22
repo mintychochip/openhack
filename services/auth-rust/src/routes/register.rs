@@ -46,7 +46,8 @@ pub async fn register(
         return e.error_response();
     }
 
-    match auth::register_user(pool.get_ref(), &body.into_inner()).await {
+    let register_req = body.into_inner();
+    match auth::register_user(pool.get_ref(), &register_req).await {
         Ok(response) => {
             publisher::user_registered(
                 redis_conn.get_ref().as_ref(),
@@ -55,8 +56,40 @@ pub async fn register(
                 &response.name,
             )
             .await;
+            
+            openhack_common::audit::log_audit(
+                &openhack_common::audit::AuditLogEntry::new(
+                    openhack_common::audit::actions::AUTH_REGISTER,
+                    &response.id.to_string(),
+                    "success",
+                )
+                .with_resource_type("user")
+                .with_resource_id(&response.id.to_string())
+                .with_ip_address(&ip)
+                .with_details(serde_json::json!({
+                    "email": &response.email,
+                    "name": &response.name,
+                }))
+            );
+            
+            openhack_common::metrics::inc_business_counter("auth_registrations_total");
             HttpResponse::Created().json(response)
         }
-        Err(e) => e.error_response(),
+        Err(e) => {
+            openhack_common::audit::log_audit(
+                &openhack_common::audit::AuditLogEntry::new(
+                    openhack_common::audit::actions::AUTH_REGISTER,
+                    "anonymous",
+                    "failure",
+                )
+                .with_resource_type("user")
+                .with_ip_address(&ip)
+                .with_details(serde_json::json!({
+                    "error": e.to_string(),
+                    "email": &register_req.email,
+                }))
+            );
+            e.error_response()
+        }
     }
 }

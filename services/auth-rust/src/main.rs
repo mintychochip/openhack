@@ -25,8 +25,28 @@ use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use openhack_common::{auth::JwtSecret, db, redis_ext};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use config::Config;
+
+#[derive(OpenApi)]
+#[openapi(
+    components(
+        schemas(
+            crate::models::user::UserProfile,
+            crate::models::user::RegisterRequest,
+            crate::models::user::RegisterResponse,
+            crate::services::gdpr::GdprExport,
+        )
+    ),
+    tags(
+        (name = "auth", description = "Authentication and user management"),
+        (name = "users", description = "User operations"),
+        (name = "gdpr", description = "GDPR compliance endpoints"),
+    )
+)]
+struct ApiDoc;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -62,6 +82,7 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .wrap(cors)
+            .wrap(openhack_common::metrics::MetricsMiddleware::new("auth"))
             .wrap(Logger::default())
             .app_data(pool_data.clone())
             .app_data(redis_conn_data.clone())
@@ -70,6 +91,8 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::configure)
             .route("/health", web::get().to(health_handler))
             .route("/ready", web::get().to(readiness_handler))
+            .route("/metrics", web::get().to(metrics_handler))
+            .service(SwaggerUi::new("/api/docs").url("/api-docs/openapi.json", ApiDoc::openapi()))
     })
     .bind(("0.0.0.0", config.port))?
     .run()
@@ -98,4 +121,10 @@ async fn readiness_handler(pool: web::Data<sqlx::postgres::PgPool>) -> HttpRespo
             }))
         }
     }
+}
+
+async fn metrics_handler() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("text/plain; version=0.0.4")
+        .body(openhack_common::metrics::render_metrics())
 }

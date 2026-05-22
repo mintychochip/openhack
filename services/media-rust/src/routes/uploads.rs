@@ -1,5 +1,5 @@
 use actix_multipart::Multipart;
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpRequest, HttpResponse};
 use futures_util::StreamExt;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::errors::AppError;
+use crate::middleware::auth::get_auth_user;
 use crate::models::file::{
     DeleteResponse, FileRecord, SignedUrlResponse, UploadQuery, UploadResponse,
 };
@@ -62,12 +63,16 @@ pub(crate) static ALLOWED_TYPES: &[(&str, &[&str])] = &[
 /// - Inserts a row into the `media.files` table (database write).
 /// - Logs at INFO level on success with `file_id` and size.
 pub async fn upload_file(
+    req: HttpRequest,
     pool: web::Data<PgPool>,
     storage: web::Data<Arc<dyn StorageProvider>>,
     config: web::Data<Config>,
     query: web::Query<UploadQuery>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, AppError> {
+    let user = get_auth_user(&req).map_err(|e| AppError::BadRequest(e.to_string()))?;
+    let _ = user;
+
     let folder = query
         .folder
         .clone()
@@ -238,10 +243,14 @@ pub async fn download_file(
 /// - Deletes the file from the storage provider (filesystem delete or S3 network call).
 /// - Logs at INFO level on successful deletion.
 pub async fn delete_file(
+    req: HttpRequest,
     pool: web::Data<PgPool>,
     storage: web::Data<Arc<dyn StorageProvider>>,
     file_id: web::Path<Uuid>,
 ) -> Result<HttpResponse, AppError> {
+    let user = get_auth_user(&req).map_err(|e| AppError::BadRequest(e.to_string()))?;
+    let _ = user;
+
     let id = file_id.into_inner();
 
     let record = sqlx::query_as::<_, FileRecord>(

@@ -56,16 +56,39 @@ pub async fn login(
 
     let body = body.into_inner();
 
-    let user = match auth::find_user_by_email(pool.get_ref(), &body.email).await {
+    let mut user = match auth::find_user_by_email(pool.get_ref(), &body.email).await {
         Ok(Some(user)) => user,
         Ok(None) => {
+            openhack_common::metrics::inc_business_counter("auth_login_failures_total");
+            openhack_common::audit::log_audit(
+                &openhack_common::audit::AuditLogEntry::new(
+                    openhack_common::audit::actions::AUTH_LOGIN_FAILURE,
+                    "anonymous",
+                    "failure",
+                )
+                .with_ip_address(&ip)
+                .with_details(serde_json::json!({
+                    "email": &body.email,
+                    "reason": "user_not_found",
+                }))
+            );
             return AuthError::Unauthorized("Invalid email or password".to_string())
                 .error_response();
         }
         Err(e) => return e.error_response(),
     };
 
+    if let Some(locked_until) = user.locked_until {
+        if locked_until > chrono::Utc::now().naive_utc() {
+            openhack_common::metrics::inc_business_counter("auth_login_failures_total");
+            return AuthError::BadRequest(
+                format!("Account locked until {locked_until}. Please try again later or reset your password.")
+            ).error_response();
+        }
+    }
+
     let Some(password_hash) = &user.password_hash else {
+        openhack_common::metrics::inc_business_counter("auth_login_failures_total");
         return AuthError::Unauthorized(
             "Account uses OAuth. Please log in with your provider.".to_string(),
         )
@@ -73,7 +96,41 @@ pub async fn login(
     };
 
     if auth::verify_password(&body.password, password_hash).is_err() {
+        openhack_common::metrics::inc_business_counter("auth_login_failures_total");
+        
+        openhack_common::audit::log_audit(
+            &openhack_common::audit::AuditLogEntry::new(
+                openhack_common::audit::actions::AUTH_LOGIN_FAILURE,
+                &user.id.to_string(),
+                "failure",
+            )
+            .with_resource_type("user")
+            .with_resource_id(&user.id.to_string())
+            .with_ip_address(&ip)
+            .with_details(serde_json::json!({
+                "email": &user.email,
+                "reason": "invalid_password",
+            }))
+        );
+        
+        let new_attempts = user.failed_login_attempts + 1;
+        let locked_until = if new_attempts >= 5 {
+            Some(chrono::Utc::now().naive_utc() + chrono::Duration::minutes(15))
+        } else {
+            None
+        };
+        
+        if let Err(e) = auth::record_failed_login(pool.get_ref(), user.id, new_attempts, locked_until).await {
+            log::warn!("Failed to record failed login: {e}");
+        }
+        
         return AuthError::Unauthorized("Invalid email or password".to_string()).error_response();
+    }
+
+    if user.failed_login_attempts > 0 {
+        if let Err(e) = auth::reset_failed_logins(pool.get_ref(), user.id).await {
+            log::warn!("Failed to reset failed logins: {e}");
+        }
     }
 
     if user.mfa_enabled {
@@ -125,7 +182,7 @@ pub async fn login(
         redis_conn.get_ref().as_ref(),
         user.id,
         body.device_info,
-        Some(ip),
+        Some(ip.clone()),
         config.get_ref(),
     )
     .await
@@ -149,6 +206,21 @@ pub async fn login(
         &user.email,
     )
     .await;
+
+    let ip_for_audit = ip.clone();
+    openhack_common::audit::log_audit(
+        &openhack_common::audit::AuditLogEntry::new(
+            openhack_common::audit::actions::AUTH_LOGIN_SUCCESS,
+            &user.id.to_string(),
+            "success",
+        )
+        .with_resource_type("user")
+        .with_resource_id(&user.id.to_string())
+        .with_ip_address(&ip_for_audit)
+    );
+
+    openhack_common::metrics::inc_business_counter("auth_logins_total");
+    openhack_common::metrics::inc_business_counter("auth_jwt_issued_total");
 
     HttpResponse::Ok().json(TokenResponse {
         access_token,

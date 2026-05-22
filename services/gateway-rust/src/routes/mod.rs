@@ -38,28 +38,51 @@ use crate::routes::proxy::ProxyState;
 /// - Registers HTTP route handlers with the Actix-web service config.
 /// - Creates and shares `ProxyState` (heap allocation, `awc::Client` pool).
 /// - Spawns a background task for rate limiter cleanup.
+async fn api_index() -> actix_web::HttpResponse {
+    actix_web::HttpResponse::Ok().json(serde_json::json!({
+        "service": "openhack-gateway",
+        "version": env!("CARGO_PKG_VERSION"),
+        "endpoints": {
+            "auth": "/api/auth",
+            "core": "/api/core",
+            "judging": "/api/judging",
+            "leaderboard": "/api/leaderboard",
+            "mail": "/api/mail",
+            "notify": "/api/notify",
+            "ai": "/api/ai",
+            "analytics": "/api/analytics",
+            "sponsors": "/api/sponsors",
+            "media": "/api/media",
+            "discord_bot": "/api/discord-bot",
+            "events": "/api/events/stream"
+        }
+    }))
+}
+
 pub fn configure(cfg: &mut web::ServiceConfig) {
     let proxy_state = ProxyState::new();
     proxy::spawn_limiter_cleanup(&proxy_state.limiter);
     let proxy_data = web::Data::new(proxy_state);
 
     cfg.app_data(proxy_data)
+        .route("/api", web::get().to(api_index))
+        .route("/api/", web::get().to(api_index))
         .service(
             web::scope("/api/events")
                 .route("/stream", web::get().to(sse::sse_stream))
                 .route("/history", web::get().to(sse::event_history))
                 .route("/poll", web::get().to(sse::event_poll)),
         )
-        .service(web::scope("/api/auth").default_service(web::to(proxy::proxy_auth)))
-        .service(web::scope("/api/core").default_service(web::to(proxy::proxy_core)))
-        .service(web::scope("/api/judging").default_service(web::to(proxy::proxy_judging)))
-        .service(web::scope("/api/leaderboard").default_service(web::to(proxy::proxy_leaderboard)))
-        .service(web::scope("/api/mail").default_service(web::to(proxy::proxy_mail)))
-        .service(web::scope("/api/notify").default_service(web::to(proxy::proxy_notify)))
-        .service(web::scope("/api/ai").default_service(web::to(proxy::proxy_ai)))
-        .service(web::scope("/api/analytics").default_service(web::to(proxy::proxy_analytics)))
-        .service(web::scope("/api/sponsors").default_service(web::to(proxy::proxy_sponsors)))
-        .service(web::scope("/api/media").default_service(web::to(proxy::proxy_media)))
-        .service(web::scope("/api/discord-bot").default_service(web::to(proxy::proxy_discord_bot)))
+        .service(web::scope("/api/auth").default_service(web::to(proxy::auth_handler)))
+        .service(web::scope("/api/core").default_service(web::to(proxy::core_handler)))
+        .service(web::scope("/api/judging").default_service(web::to(proxy::judging_handler)))
+        .service(web::scope("/api/leaderboard").default_service(web::to(proxy::leaderboard_handler)))
+        .service(web::scope("/api/mail").default_service(web::to(proxy::mail_handler)))
+        .service(web::scope("/api/notify").default_service(web::to(proxy::notify_handler)))
+        .service(web::scope("/api/ai").default_service(web::to(proxy::ai_handler)))
+        .service(web::scope("/api/analytics").default_service(web::to(proxy::analytics_handler)))
+        .service(web::scope("/api/sponsors").default_service(web::to(proxy::sponsors_handler)))
+        .service(web::scope("/api/media").default_service(web::to(proxy::media_handler)))
+        .service(web::scope("/api/discord-bot").default_service(web::to(proxy::discord_bot_handler)))
         .route("/health", web::get().to(proxy::proxy_health));
 }

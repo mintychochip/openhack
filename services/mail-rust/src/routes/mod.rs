@@ -1,5 +1,6 @@
 pub mod attachments;
 pub mod broadcast;
+pub mod drip;
 pub mod logs;
 pub mod send;
 pub mod templates;
@@ -10,6 +11,43 @@ use actix_web::web;
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api/mail")
+            .route("/drip/campaigns", web::post().to(drip::create_campaign))
+            .route("/drip/campaigns", web::get().to(drip::list_campaigns))
+            .route("/drip/campaigns/{id}", web::get().to(drip::get_campaign))
+            .route("/drip/campaigns/{id}", web::put().to(drip::update_campaign))
+            .route("/drip/campaigns/{id}", web::delete().to(drip::delete_campaign))
+            .route(
+                "/drip/campaigns/{id}/steps",
+                web::post().to(drip::create_step),
+            )
+            .route(
+                "/drip/campaigns/{id}/steps",
+                web::get().to(drip::list_steps),
+            )
+            .route(
+                "/drip/steps/{id}",
+                web::put().to(drip::update_step),
+            )
+            .route(
+                "/drip/steps/{id}",
+                web::delete().to(drip::delete_step),
+            )
+            .route(
+                "/drip/campaigns/{id}/enroll",
+                web::post().to(drip::enroll),
+            )
+            .route(
+                "/drip/campaigns/{id}/enrollments",
+                web::get().to(drip::list_enrollments),
+            )
+            .route(
+                "/drip/enrollments/{id}/unsubscribe",
+                web::post().to(drip::unsubscribe),
+            )
+            .route(
+                "/drip/process",
+                web::post().to(drip::process_pending),
+            )
             .route("/send", web::post().to(send::send_email))
             .route("/send/bulk", web::post().to(send::send_bulk))
             .route("/templates", web::post().to(templates::create_template))

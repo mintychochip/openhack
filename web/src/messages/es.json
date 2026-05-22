@@ -1,0 +1,193 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "update": "Actualizar",
+    "submit": "Enviar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "error": "Error",
+    "success": "Éxito",
+    "warning": "Advertencia",
+    "info": "Información"
+  },
+  "auth": {
+    "login": {
+      "title": "Iniciar Sesión",
+      "email": "Correo Electrónico",
+      "password": "Contraseña",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "submit": "Iniciar Sesión",
+      "noAccount": "¿No tienes una cuenta?",
+      "register": "Registrarse"
+    },
+    "register": {
+      "title": "Crear Cuenta",
+      "email": "Correo Electrónico",
+      "password": "Contraseña",
+      "confirmPassword": "Confirmar Contraseña",
+      "name": "Nombre Completo",
+      "submit": "Crear Cuenta",
+      "haveAccount": "¿Ya tienes una cuenta?",
+      "login": "Iniciar Sesión"
+    },
+    "forgotPassword": {
+      "title": "Restablecer Contraseña",
+      "email": "Correo Electrónico",
+      "submit": "Enviar Enlace",
+      "back": "Volver a Iniciar Sesión"
+    },
+    "resetPassword": {
+      "title": "Nueva Contraseña",
+      "password": "Nueva Contraseña",
+      "confirmPassword": "Confirmar Nueva Contraseña",
+      "submit": "Restablecer Contraseña"
+    },
+    "mfa": {
+      "title": "Autenticación de Dos Factores",
+      "code": "Código de Autenticación",
+      "submit": "Verificar",
+      "backup": "Usar un código de respaldo"
+    }
+  },
+  "dashboard": {
+    "title": "Panel de Control",
+    "welcome": "¡Bienvenido de nuevo, {name}!",
+    "countdown": {
+      "title": "El Hackathon Comienza En",
+      "days": "Días",
+      "hours": "Horas",
+      "minutes": "Minutos",
+      "seconds": "Segundos"
+    },
+    "stats": {
+      "teams": "Equipos",
+      "projects": "Proyectos",
+      "participants": "Participantes",
+      "submissions": "Entregas"
+    },
+    "nav": {
+      "dashboard": "Panel",
+      "profile": "Perfil",
+      "settings": "Configuración",
+      "teams": "Equipos",
+      "projects": "Proyectos",
+      "events": "Eventos",
+      "leaderboard": "Clasificación",
+      "judging": "Evaluación",
+      "sponsor": "Stand del Patrocinador",
+      "certificate": "Certificado",
+      "admin": "Administración"
+    }
+  },
+  "teams": {
+    "title": "Equipos",
+    "create": "Crear Equipo",
+    "myTeam": "Mi Equipo",
+    "joinTeam": "Unirse al Equipo",
+    "leaveTeam": "Salir del Equipo",
+    "inviteMember": "Invitar Miembro",
+    "kickMember": "Eliminar Miembro",
+    "name": "Nombre del Equipo",
+    "description": "Descripción",
+    "members": "Miembros",
+    "lookingForMembers": "Buscando miembros del equipo",
+    "skills": "Habilidades",
+    "availability": "Disponibilidad"
+  },
+  "projects": {
+    "title": "Proyectos",
+    "create": "Crear Proyecto",
+    "submit": "Entregar Proyecto",
+    "myProjects": "Mis Proyectos",
+    "name": "Nombre del Proyecto",
+    "description": "Descripción",
+    "category": "Categoría",
+    "demoUrl": "URL de Demo",
+    "repoUrl": "URL del Repositorio",
+    "team": "Equipo"
+  },
+  "events": {
+    "title": "Eventos",
+    "rsvp": "Confirmar Asistencia",
+    "cancelRsvp": "Cancelar RSVP",
+    "attendees": "Asistentes",
+    "checkIn": "Check-in",
+    "upcoming": "Próximos Eventos",
+    "past": "Eventos Pasados"
+  },
+  "judging": {
+    "title": "Evaluación",
+    "assignments": "Asignaciones",
+    "scores": "Puntuaciones",
+    "rubric": "Rúbrica",
+    "submitScore": "Enviar Puntuación",
+    "criteria": "Criterios",
+    "score": "Puntuación",
+    "notes": "Notas",
+    "history": "Historial de Evaluación"
+  },
+  "leaderboard": {
+    "title": "Clasificación",
+    "rank": "Rango",
+    "team": "Equipo",
+    "score": "Puntuación",
+    "previousRank": "Rango Anterior"
+  },
+  "sponsor": {
+    "booth": {
+      "title": "Stand del Patrocinador",
+      "visit": "Visitar Stand",
+      "message": "Enviar Mensaje",
+      "poll": "Votar en Encuesta",
+      "resources": "Recursos",
+      "prizes": "Premios"
+    },
+    "prizes": {
+      "title": "Premios",
+      "submit": "Presentar para Premio",
+      "winner": "Ganador"
+    }
+  },
+  "certificate": {
+    "title": "Certificado",
+    "download": "Descargar Certificado",
+    "verify": "Verificar Certificado",
+    "verificationCode": "Código de Verificación"
+  },
+  "admin": {
+    "title": "Panel de Administración",
+    "users": "Usuarios",
+    "teams": "Equipos",
+    "projects": "Proyectos",
+    "events": "Eventos",
+    "hackathon": "Configuración del Hackathon",
+    "judging": "Evaluación",
+    "leaderboard": "Clasificación",
+    "mail": "Correo",
+    "webhooks": "Webhooks",
+    "analytics": "Analíticas",
+    "checkin": "Check-in"
+  },
+  "validation": {
+    "required": "Este campo es obligatorio",
+    "email": "Por favor, introduce un correo válido",
+    "password": "La contraseña debe tener al menos 8 caracteres",
+    "passwordMatch": "Las contraseñas no coinciden",
+    "minLength": "Debe tener al menos {min} caracteres",
+    "maxLength": "Debe tener como máximo {max} caracteres"
+  },
+  "errors": {
+    "notFound": "Página no encontrada",
+    "unauthorized": "No estás autorizado para ver esta página",
+    "serverError": "Algo salió mal. Por favor, inténtalo de nuevo más tarde.",
+    "networkError": "Error de red. Por favor, verifica tu conexión."
+  }
+}

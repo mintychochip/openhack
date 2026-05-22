@@ -5,20 +5,14 @@ metadata:
   labels:
     {{- include "openhack.labels" . | nindent 4 }}
 data:
-  # Database Configuration
   POSTGRES_HOST: "{{ .Release.Name }}-postgresql"
   POSTGRES_PORT: "5432"
   POSTGRES_DB: "{{ .Values.postgresql.auth.database }}"
   POSTGRES_USER: "{{ .Values.postgresql.auth.username }}"
-  
-  # Redis Configuration
+  DATABASE_PASSWORD: "{{ .Values.postgresql.auth.password }}"
   REDIS_URL: "redis://{{ .Release.Name }}-redis-master:6379"
-  
-  # MinIO Configuration
   MINIO_ENDPOINT: "http://{{ .Release.Name }}-minio:9000"
   MINIO_BUCKET: "openhack-media"
-  
-  # Service URLs
   AUTH_SERVICE_URL: "http://{{ include "openhack.fullname" . }}-auth-svc:3001"
   CORE_SERVICE_URL: "http://{{ include "openhack.fullname" . }}-core-svc:3002"
   JUDGING_SERVICE_URL: "http://{{ include "openhack.fullname" . }}-judging-svc:3003"
@@ -29,6 +23,7 @@ data:
   ANALYTICS_SERVICE_URL: "http://{{ include "openhack.fullname" . }}-analytics-svc:3008"
   SPONSORS_SERVICE_URL: "http://{{ include "openhack.fullname" . }}-sponsors-svc:3009"
   MEDIA_SERVICE_URL: "http://{{ include "openhack.fullname" . }}-media-svc:3010"
-  
-  # Frontend Configuration
   NEXT_PUBLIC_API_URL: "http://{{ include "openhack.fullname" . }}-gateway:8000"
+  NEXT_PUBLIC_GATEWAY_URL: "http://openhack.local"
+  RUST_LOG: "info"
+  SERVICE_PORT: "3000"

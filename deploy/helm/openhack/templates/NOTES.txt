@@ -1,0 +1,25 @@
+OpenHack has been deployed!
+
+Gateway URL: http://{{ include "openhack.fullname" . }}-gateway-svc:8000
+
+Get the gateway external URL:
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "openhack.fullname" . }}-gateway-svc)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "Gateway URL: http://$NODE_IP:$NODE_PORT"
+
+Port-forward the gateway for local access:
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "openhack.fullname" . }}-gateway-svc 8000:8000
+
+Web frontend: http://{{ include "openhack.fullname" . }}-web:3000
+
+{{- if .Values.monitoring.enabled }}
+
+Monitoring:
+  Grafana: http://{{ include "openhack.fullname" . }}-grafana:3000
+  Prometheus: http://{{ include "openhack.fullname" . }}-prometheus:9090
+{{- end }}
+
+Next steps:
+  1. Register an admin user via the gateway API
+  2. Configure OAuth providers (GitHub, Google, Discord) if needed
+  3. Set up Discord bot token for notification integration
