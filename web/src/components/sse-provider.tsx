@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useContext, ReactNode, useState, useEffect, useRef } from "react";
+import { createContext, useContext, ReactNode, useEffect } from "react";
 import { useSSE, useEvent } from "@/hooks/useSSE";
 import { SSEEvent } from "@/lib/event-bus";
+import { toast } from "@/hooks/use-toast";
 
 const SSE_ROUTES = ["/dashboard"];
 
@@ -40,12 +41,25 @@ export function SSEProvider({ children }: { children: ReactNode }) {
     }
   );
 
+  // Listen for custom "openhack-toast" window events dispatched by SSE
+  // notifications and non-SSE code that wants to trigger toasts
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.title || detail?.message) {
+        toast({
+          title: detail.title,
+          description: detail.message,
+        })
+      }
+    }
+    window.addEventListener("openhack-toast", handler)
+    return () => window.removeEventListener("openhack-toast", handler)
+  }, [])
+
   return (
     <SSEContext.Provider value={{ connected, connecting, error, reconnect }}>
       {children}
-      {shouldConnectSSE() && (
-        <ConnectionIndicator connected={connected} connecting={connecting} error={error} />
-      )}
     </SSEContext.Provider>
   );
 }
@@ -56,61 +70,6 @@ export function useSSEContext(): SSEContextType {
     throw new Error("useSSEContext must be used within SSEProvider");
   }
   return context;
-}
-
-function ConnectionIndicator({ connected, connecting, error }: { connected: boolean; connecting: boolean; error: string | null }) {
-  const [displayState, setDisplayState] = useState<"connected" | "connecting" | "error" | "idle">("idle");
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-
-    if (connected) {
-      timerRef.current = setTimeout(() => setDisplayState("connected"), 1000);
-    } else if (error) {
-      timerRef.current = setTimeout(() => setDisplayState("error"), 3000);
-    } else if (connecting) {
-      timerRef.current = setTimeout(() => setDisplayState("connecting"), 2000);
-    } else {
-      setDisplayState("idle");
-    }
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [connected, connecting, error]);
-
-  if (displayState === "error") {
-    return (
-      <div className="fixed bottom-4 right-4 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-        <span className="text-lg">&#x274C;</span>
-        <span>Connection lost</span>
-      </div>
-    );
-  }
-
-  if (displayState === "connecting") {
-    return (
-      <div className="fixed bottom-4 right-4 bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-700 text-yellow-700 dark:text-yellow-200 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-        <span className="text-lg">&#x1F4E1;</span>
-        <span>Connecting...</span>
-      </div>
-    );
-  }
-
-  if (displayState === "connected") {
-    return (
-      <div className="fixed bottom-4 right-4 bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-200 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-        <span className="text-lg">&#x1F4E1;</span>
-        <span>Live</span>
-      </div>
-    );
-  }
-
-  return null;
 }
 
 function showToast(event: SSEEvent): void {

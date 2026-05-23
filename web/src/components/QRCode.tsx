@@ -14,6 +14,8 @@
  */
 'use client';
 
+import { toast } from "@/hooks/use-toast";
+
 interface QRCodeProps {
   value: string;
   size?: number;
@@ -62,8 +64,9 @@ export function QRCodeDisplay({ title, value, size = 256 }: QRCodeDisplayProps) 
       link.download = `${title.replace(/\s+/g, '_')}_QR.png`;
       link.click();
       window.URL.revokeObjectURL(url);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to download QR code:', error);
+      toast({ title: "Failed to download QR code", description: error?.message, variant: "destructive" });
     }
   };
 

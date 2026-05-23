@@ -18,6 +18,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from "@/hooks/use-toast";
 import { Clock, Play, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface CountdownTimerProps {
@@ -233,8 +234,9 @@ export function PhaseCountdown({ hackathonId }: PhaseCountdownProps) {
         const res = await fetch(`/api/core/phases/hackathon/${hackathonId}/current`);
         const data = await res.json();
         setCurrentPhase(data.current_phase);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to fetch current phase:', error);
+        toast({ title: "Failed to load phase data", description: error?.message, variant: "destructive" });
       } finally {
         setLoading(false);
       }

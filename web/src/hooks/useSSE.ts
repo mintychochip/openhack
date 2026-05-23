@@ -52,8 +52,12 @@ export function useSSE(options: UseSSEOptions = {}): UseSSEReturn {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const connectedAtRef = useRef<number>(0);
+  const rapidFailCountRef = useRef(0);
+  const lastFailTimeRef = useRef<number>(0);
   const maxReconnectAttempts = 10;
   const minReconnectDelay = 3000;
+  const rapidFailWindow = 2000; // ms
+  const maxRapidFails = 3;
 
   const buildUrl = useCallback(() => {
     const baseUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
@@ -147,6 +151,23 @@ export function useSSE(options: UseSSEOptions = {}): UseSSEReturn {
       setConnecting(false);
       eventBus.setConnected(false);
 
+      const now = Date.now();
+      const timeSinceLastFail = now - lastFailTimeRef.current;
+      lastFailTimeRef.current = now;
+
+      if (timeSinceLastFail < rapidFailWindow) {
+        rapidFailCountRef.current++;
+      } else {
+        rapidFailCountRef.current = 1;
+      }
+
+      // Circuit breaker: if the server keeps rejecting us immediately,
+      // stop reconnecting to avoid a "connected/disconnected" loop.
+      if (rapidFailCountRef.current >= maxRapidFails) {
+        setError('Live updates unavailable. The server does not support SSE.');
+        return;
+      }
+
       const uptime = Date.now() - connectedAtRef.current;
       const wasBrief = uptime < 5000 && connectedAtRef.current > 0;
 
@@ -171,6 +192,8 @@ export function useSSE(options: UseSSEOptions = {}): UseSSEReturn {
   const reconnect = useCallback(() => {
     disconnect();
     reconnectAttemptsRef.current = 0;
+    rapidFailCountRef.current = 0;
+    lastFailTimeRef.current = 0;
     setTimeout(connect, 500);
   }, [connect, disconnect]);
 
