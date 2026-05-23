@@ -1,10 +1,12 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
 import { api } from "@/lib/api"
 import {
   generateDaisyuiCss,
   generateShadcnCss,
+  oklchStrToHsl,
+  DARK_PRESETS,
   type CustomThemeColors,
   type DaisyuiPreset,
 } from "@/lib/theme-colors"
@@ -41,20 +43,6 @@ const DEFAULT_CONFIG: ThemeConfig = {
   fontConfig: {},
 }
 
-const DARK_PRESETS = [
-  "dark",
-  "night",
-  "dracula",
-  "black",
-  "luxury",
-  "business",
-  "coffee",
-  "dim",
-  "winter",
-  "sunset",
-  "synthwave",
-]
-
 const ThemeContext = createContext<ThemeContextType>({
   config: DEFAULT_CONFIG,
   isLoading: true,
@@ -66,109 +54,81 @@ export function useTheme() {
 }
 
 /**
- * Read DaisyUI CSS variables from the document and convert them to
- * shadcn HSL variables. Works for both built-in presets and custom themes.
+ * Read DaisyUI v4 CSS variables from the document and convert them to
+ * shadcn HSL variables. DaisyUI v4 uses OKLCH colors under
+ * `--color-*` names; we read the raw values and convert via culori.
  */
-function buildColorBridge(): string {
-  const testEl = document.createElement("div")
-  testEl.style.display = "none"
-  document.body.appendChild(testEl)
+export function buildColorBridge(): string {
+  const root = getComputedStyle(document.documentElement)
 
-  const vars: Record<string, string> = {}
-  const daisyVars = [
-    ["--p", "--primary"],
-    ["--pf", "--primary-foreground"],
-    ["--s", "--secondary"],
-    ["--sf", "--secondary-foreground"],
-    ["--a", "--accent"],
-    ["--af", "--accent-foreground"],
-    ["--n", "--neutral"],
-    ["--nf", "--neutral-foreground"],
-    ["--b1", "--background"],
-    ["--bc", "--foreground"],
-    ["--in", "--info"],
-    ["--su", "--success"],
-    ["--wa", "--warning"],
-    ["--er", "--destructive"],
-    ["--er-f", "--destructive-foreground"],
+  const mappings: [string, string][] = [
+    // Backgrounds — use base scale so secondary/muted are subtle grays
+    ["--color-base-100", "--background"],
+    ["--color-base-100", "--card"],
+    ["--color-base-100", "--popover"],
+    ["--color-base-200", "--secondary"],
+    ["--color-base-200", "--muted"],
+    ["--color-base-200", "--input"],
+    ["--color-base-300", "--border"],
+
+    // Foregrounds — base-content for main text, neutral (dark) for muted text
+    ["--color-base-content", "--foreground"],
+    ["--color-base-content", "--card-foreground"],
+    ["--color-base-content", "--popover-foreground"],
+    ["--color-base-content", "--secondary-foreground"],
+    ["--color-neutral", "--muted-foreground"],
+
+    // Accents — use DaisyUI semantic colors directly
+    ["--color-primary", "--primary"],
+    ["--color-primary-content", "--primary-foreground"],
+    ["--color-accent", "--accent"],
+    ["--color-accent-content", "--accent-foreground"],
+    ["--color-info", "--info"],
+    ["--color-success", "--success"],
+    ["--color-warning", "--warning"],
+    ["--color-error", "--destructive"],
+    ["--color-error-content", "--destructive-foreground"],
+
+    // Ring matches primary for consistency
+    ["--color-primary", "--ring"],
   ]
 
-  for (const [daisyVar, shadcnVar] of daisyVars) {
-    testEl.style.setProperty("color", `var(${daisyVar})`)
-    const computed = getComputedStyle(testEl).color
-    if (computed && computed !== "rgba(0, 0, 0, 0)") {
-      vars[shadcnVar] = computed
-    }
-  }
-
-  document.body.removeChild(testEl)
-
-  // Convert rgb() strings to HSL for shadcn
   const hslVars: Record<string, string> = {}
-  for (const [key, rgbStr] of Object.entries(vars)) {
-    const match = rgbStr.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/)
-    if (match) {
-      const r = parseInt(match[1]) / 255
-      const g = parseInt(match[2]) / 255
-      const b = parseInt(match[3]) / 255
-      const hsl = rgbToHsl(r, g, b)
-      hslVars[key] = `${hsl.h} ${hsl.s}% ${hsl.l}%`
+
+  for (const [daisyVar, shadcnVar] of mappings) {
+    const raw = root.getPropertyValue(daisyVar).trim()
+    if (!raw) continue
+    const hslVal = oklchStrToHsl(raw)
+    if (hslVal) {
+      hslVars[shadcnVar] = hslVal
     }
   }
 
-  // Map additional shadcn variables that DaisyUI doesn't have exact matches for
   const cssLines = [
     `:root {`,
     `  --background: ${hslVars["--background"] || "0 0% 100%"};`,
     `  --foreground: ${hslVars["--foreground"] || "222.2 84% 4.9%"};`,
-    `  --card: ${hslVars["--background"] || "0 0% 100%"};`,
-    `  --card-foreground: ${hslVars["--foreground"] || "222.2 84% 4.9%"};`,
-    `  --popover: ${hslVars["--background"] || "0 0% 100%"};`,
-    `  --popover-foreground: ${hslVars["--foreground"] || "222.2 84% 4.9%"};`,
+    `  --card: ${hslVars["--card"] || "0 0% 100%"};`,
+    `  --card-foreground: ${hslVars["--card-foreground"] || "222.2 84% 4.9%"};`,
+    `  --popover: ${hslVars["--popover"] || "0 0% 100%"};`,
+    `  --popover-foreground: ${hslVars["--popover-foreground"] || "222.2 84% 4.9%"};`,
     `  --primary: ${hslVars["--primary"] || "221.2 83.2% 53.3%"};`,
     `  --primary-foreground: ${hslVars["--primary-foreground"] || "210 40% 98%"};`,
     `  --secondary: ${hslVars["--secondary"] || "210 40% 96.1%"};`,
     `  --secondary-foreground: ${hslVars["--secondary-foreground"] || "222.2 47.4% 11.2%"};`,
-    `  --muted: ${hslVars["--neutral"] || "210 40% 96.1%"};`,
-    `  --muted-foreground: ${hslVars["--neutral-foreground"] || "215.4 16.3% 46.9%"};`,
+    `  --muted: ${hslVars["--muted"] || "210 40% 96.1%"};`,
+    `  --muted-foreground: ${hslVars["--muted-foreground"] || "215.4 16.3% 46.9%"};`,
     `  --accent: ${hslVars["--accent"] || "210 40% 96.1%"};`,
     `  --accent-foreground: ${hslVars["--accent-foreground"] || "222.2 47.4% 11.2%"};`,
     `  --destructive: ${hslVars["--destructive"] || "0 84.2% 60.2%"};`,
     `  --destructive-foreground: ${hslVars["--destructive-foreground"] || "210 40% 98%"};`,
-    `  --border: ${hslVars["--neutral"] || "214.3 31.8% 91.4%"};`,
-    `  --input: ${hslVars["--neutral"] || "214.3 31.8% 91.4%"};`,
-    `  --ring: ${hslVars["--primary"] || "221.2 83.2% 53.3%"};`,
+    `  --border: ${hslVars["--border"] || "214.3 31.8% 91.4%"};`,
+    `  --input: ${hslVars["--input"] || "214.3 31.8% 91.4%"};`,
+    `  --ring: ${hslVars["--ring"] || "221.2 83.2% 53.3%"};`,
     `}`,
   ]
 
   return cssLines.join("\n")
-}
-
-function rgbToHsl(r: number, g: number, b: number) {
-  const max = Math.max(r, g, b)
-  const min = Math.min(r, g, b)
-  const l = (max + min) / 2
-  let h = 0
-  let s = 0
-
-  if (max !== min) {
-    const d = max - min
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
-    switch (max) {
-      case r:
-        h = (g - b) / d + (g < b ? 6 : 0)
-        break
-      case g:
-        h = (b - r) / d + 2
-        break
-      case b:
-        h = (r - g) / d + 4
-        break
-    }
-    h /= 6
-  }
-
-  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) }
 }
 
 function injectFontLink(id: string, url: string) {
@@ -212,6 +172,7 @@ function injectFontVars(fontConfig: FontConfig) {
 export function ThemeProvider({ children, initialConfig }: { children: React.ReactNode; initialConfig?: ThemeConfig }) {
   const [config, setConfig] = useState<ThemeConfig | null>(initialConfig || null)
   const [isLoading, setIsLoading] = useState(!initialConfig)
+  const colorBridgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -244,6 +205,12 @@ export function ThemeProvider({ children, initialConfig }: { children: React.Rea
     if (!config) return
 
     const html = document.documentElement
+
+    // Clear any pending color bridge timer from previous config
+    if (colorBridgeTimerRef.current) {
+      clearTimeout(colorBridgeTimerRef.current)
+      colorBridgeTimerRef.current = null
+    }
 
     // Set DaisyUI data-theme attribute
     html.setAttribute("data-theme", config.daisyuiPreset)
@@ -280,16 +247,16 @@ export function ThemeProvider({ children, initialConfig }: { children: React.Rea
     } else if (config.daisyuiPreset !== "custom") {
       // For built-in presets, build a color bridge from DaisyUI -> shadcn
       // Use a small timeout to let DaisyUI apply its variables first
-      const timer = setTimeout(() => {
+      colorBridgeTimerRef.current = setTimeout(() => {
+        colorBridgeTimerRef.current = null
         const bridgeStyle = document.createElement("style")
         bridgeStyle.id = "color-bridge"
         bridgeStyle.textContent = buildColorBridge()
         document.head.appendChild(bridgeStyle)
       }, 50)
-      return () => clearTimeout(timer)
     }
 
-    // Inject custom CSS
+    // Inject custom CSS (always reachable — applies to all presets)
     if (config.customCss) {
       const customStyle = document.createElement("style")
       customStyle.id = "hackathon-custom-css"
@@ -297,11 +264,18 @@ export function ThemeProvider({ children, initialConfig }: { children: React.Rea
       document.head.appendChild(customStyle)
     }
 
-    // Inject font links
+    // Inject font links (always reachable — applies to all presets)
     injectFontLink("font-display-link", config.fontConfig.display?.url || "")
     injectFontLink("font-heading-link", config.fontConfig.heading?.url || "")
     injectFontLink("font-body-link", config.fontConfig.body?.url || "")
     injectFontVars(config.fontConfig)
+
+    return () => {
+      if (colorBridgeTimerRef.current) {
+        clearTimeout(colorBridgeTimerRef.current)
+        colorBridgeTimerRef.current = null
+      }
+    }
   }, [config])
 
   return (

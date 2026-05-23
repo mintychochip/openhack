@@ -54,18 +54,30 @@ export function hexToHsl(hex: string): string {
   return `${H} ${S} ${L}`
 }
 
-/** Generate DaisyUI CSS variable block for a custom theme. */
+/** Convert an OKLCH CSS string to a shadcn HSL CSS string. */
+export function oklchStrToHsl(oklchStr: string): string | null {
+  const color = parse(oklchStr)
+  if (!color) return null
+  const h = hsl(color)
+  if (!h) return null
+  const H = Number.isFinite(h.h ?? 0) ? Math.round(h.h ?? 0).toString() : "0"
+  const S = `${(h.s * 100).toFixed(1)}%`
+  const L = `${(h.l * 100).toFixed(1)}%`
+  return `${H} ${S} ${L}`
+}
+
+/** Generate DaisyUI v4 CSS variable block for a custom theme. */
 export function generateDaisyuiCss(colors: CustomThemeColors): string {
   const vars: Record<string, string> = {}
-  if (colors.primary) vars["--p"] = hexToOklch(colors.primary)
-  if (colors.secondary) vars["--s"] = hexToOklch(colors.secondary)
-  if (colors.accent) vars["--a"] = hexToOklch(colors.accent)
-  if (colors.neutral) vars["--n"] = hexToOklch(colors.neutral)
-  if (colors["base-100"]) vars["--b1"] = hexToOklch(colors["base-100"])
-  if (colors.info) vars["--in"] = hexToOklch(colors.info)
-  if (colors.success) vars["--su"] = hexToOklch(colors.success)
-  if (colors.warning) vars["--wa"] = hexToOklch(colors.warning)
-  if (colors.error) vars["--er"] = hexToOklch(colors.error)
+  if (colors.primary) vars["--color-primary"] = hexToOklch(colors.primary)
+  if (colors.secondary) vars["--color-secondary"] = hexToOklch(colors.secondary)
+  if (colors.accent) vars["--color-accent"] = hexToOklch(colors.accent)
+  if (colors.neutral) vars["--color-neutral"] = hexToOklch(colors.neutral)
+  if (colors["base-100"]) vars["--color-base-100"] = hexToOklch(colors["base-100"])
+  if (colors.info) vars["--color-info"] = hexToOklch(colors.info)
+  if (colors.success) vars["--color-success"] = hexToOklch(colors.success)
+  if (colors.warning) vars["--color-warning"] = hexToOklch(colors.warning)
+  if (colors.error) vars["--color-error"] = hexToOklch(colors.error)
 
   const entries = Object.entries(vars)
     .map(([k, v]) => `    ${k}: ${v};`)
@@ -159,6 +171,24 @@ export const DAISYUI_PRESETS = [
   "dim",
   "nord",
   "sunset",
+  "caramellatte",
+  "abyss",
+  "silk",
 ] as const
 
 export type DaisyuiPreset = (typeof DAISYUI_PRESETS)[number]
+
+/** DaisyUI preset names that should enable dark-mode shadcn styling. */
+export const DARK_PRESETS = [
+  "dark",
+  "night",
+  "dracula",
+  "black",
+  "luxury",
+  "business",
+  "coffee",
+  "dim",
+  "sunset",
+  "synthwave",
+  "abyss",
+]

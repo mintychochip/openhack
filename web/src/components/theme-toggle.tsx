@@ -3,17 +3,22 @@
 import * as React from "react"
 import { Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useTheme } from "@/contexts/theme-context"
+import { DARK_PRESETS } from "@/lib/theme-colors"
 
 export function ThemeToggle() {
+  const { config } = useTheme()
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
+  const initializedRef = React.useRef(false)
 
   React.useEffect(() => {
+    if (!config || initializedRef.current) return
     const saved = localStorage.getItem("theme") as "light" | "dark" | null
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    const initial = saved || (prefersDark ? "dark" : "light")
+    const presetIsDark = DARK_PRESETS.includes(config.daisyuiPreset as string)
+    const initial = saved || (presetIsDark ? "dark" : "light")
     setTheme(initial)
-    document.documentElement.classList.toggle("dark", initial === "dark")
-  }, [])
+    initializedRef.current = true
+  }, [config])
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light"

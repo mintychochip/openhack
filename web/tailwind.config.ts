@@ -79,12 +79,9 @@ const config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("daisyui")],
+  plugins: [require("tailwindcss-animate"), require("daisyui")({ themes: "all" })],
   daisyui: {
-    themes: true,
-    base: true,
-    styled: true,
-    utils: true,
+    themes: "all",
   },
 } satisfies Config
 

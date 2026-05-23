@@ -2,6 +2,7 @@ import {getMessages} from 'next-intl/server';
 import {notFound} from 'next/navigation';
 import {Providers} from '@/components/Providers';
 import type { ThemeConfig } from '@/contexts/theme-context';
+import { DARK_PRESETS } from '@/lib/theme-colors';
 
 type Props = {
   children: React.ReactNode;
@@ -44,8 +45,7 @@ export default async function LocaleLayout({children, params}: Props) {
   const messages = await getMessages();
   const initialConfig = await fetchThemeConfig();
 
-  const darkPresets = ['dark', 'night', 'dracula', 'black', 'luxury', 'business', 'coffee', 'dim', 'winter', 'sunset', 'synthwave'];
-  const isDark = darkPresets.includes(initialConfig?.daisyuiPreset || '');
+  const isDark = DARK_PRESETS.includes(initialConfig?.daisyuiPreset || '');
 
   return (
     <html lang={locale} data-theme={initialConfig?.daisyuiPreset || 'light'} className={isDark ? 'dark' : ''}>

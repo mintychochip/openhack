@@ -4,6 +4,7 @@ import {AuthProvider} from '@/contexts/auth-context';
 import {ThemeProvider} from '@/contexts/theme-context';
 import {NextIntlClientProvider} from 'next-intl';
 import {SSEProvider} from '@/components/sse-provider';
+import {Toaster} from '@/components/toaster';
 
 import type { ThemeConfig } from '@/contexts/theme-context';
 
@@ -21,6 +22,7 @@ export function Providers({children, locale, messages, initialConfig}: Props) {
         <ThemeProvider initialConfig={initialConfig}>
           <SSEProvider>
             {children}
+            <Toaster />
           </SSEProvider>
         </ThemeProvider>
       </AuthProvider>
