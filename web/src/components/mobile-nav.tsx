@@ -1,106 +1,76 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, X, ClipboardList } from "lucide-react"
+import * as Dialog from "@radix-ui/react-dialog"
+import { Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { useAuth } from "@/contexts/auth-context"
+import { DashboardSidebar, type NavItem } from "@/components/dashboard-sidebar"
 
-interface NavItem {
-  href: string
-  label: string
+interface MobileNavProps {
+  brandName: string
+  navItems: NavItem[]
+  user: { name: string; avatarUrl?: string } | null
+  logout: () => void
 }
 
-const participantNavItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/teams", label: "Teams" },
-  { href: "/dashboard/projects", label: "Projects" },
-  { href: "/dashboard/events", label: "Events" },
-  { href: "/dashboard/leaderboard", label: "Leaderboard" },
-]
-
-const judgeNavItems: NavItem[] = [
-  ...participantNavItems,
-  { href: "/dashboard/judging", label: "Judging" },
-]
-
-const sponsorNavItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/sponsor/booth", label: "My Booth" },
-  { href: "/dashboard/sponsor/prizes", label: "Prizes" },
-  { href: "/dashboard/sponsor/submissions", label: "Submissions" },
-]
-
-const adminNavItems: NavItem[] = [
-  ...judgeNavItems,
-  { href: "/dashboard/admin/hackathon", label: "Hackathon" },
-  { href: "/dashboard/admin/theme", label: "Theme" },
-]
-
-export function MobileNav() {
-  const [isOpen, setIsOpen] = React.useState(false)
-  const pathname = usePathname()
-  const { user } = useAuth()
-
-  React.useEffect(() => {
-    setIsOpen(false)
-  }, [pathname])
-
-  let navItems = participantNavItems
-  if (user?.roles.includes("admin")) {
-    navItems = adminNavItems
-  } else if (user?.roles.includes("judge")) {
-    navItems = judgeNavItems
-  } else if (user?.roles.includes("sponsor")) {
-    navItems = sponsorNavItems
-  }
+export function MobileNav({ brandName, navItems, user, logout }: MobileNavProps) {
+  const [open, setOpen] = React.useState(false)
 
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setIsOpen(!isOpen)}
-        className="sm:hidden"
-      >
-        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger asChild>
+        <Button variant="ghost" size="icon" className="md:hidden">
+          <Menu className="h-5 w-5" />
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          className={cn(
+            "fixed inset-0 z-50 bg-black/40",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
+          )}
+        />
+        <Dialog.Content
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 w-72 bg-base-100 border-r border-base-200 shadow-xl outline-none",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
+            "duration-300"
+          )}
+        >
+          <Dialog.Title className="sr-only">Navigation Menu</Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Mobile navigation menu for the dashboard.
+          </Dialog.Description>
 
-      <div
-        className={cn(
-          "fixed inset-0 top-16 z-50 bg-background sm:hidden",
-          isOpen ? "block" : "hidden"
-        )}
-      >
-        <nav className="container mx-auto px-4 py-6 flex flex-col gap-2">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                pathname === item.href
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-secondary"
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
-          <div className="border-t mt-4 pt-4 flex items-center justify-between">
-            <Link
-              href="/dashboard/settings"
-              className="px-4 py-3 rounded-lg text-sm font-medium hover:bg-secondary transition-colors"
-            >
-              Settings
-            </Link>
-            <ThemeToggle />
+          <div className="flex flex-col h-full">
+            <div className="h-14 flex items-center justify-between px-4 border-b border-base-200 shrink-0">
+              <span className="text-lg font-semibold tracking-tight text-base-content">
+                {brandName}
+              </span>
+              <Dialog.Close asChild>
+                <Button variant="ghost" size="icon">
+                  <X className="h-5 w-5" />
+                </Button>
+              </Dialog.Close>
+            </div>
+
+            <DashboardSidebar
+              brandName={brandName}
+              navItems={navItems}
+              user={user}
+              logout={() => {
+                setOpen(false)
+                logout()
+              }}
+              showBrand={false}
+              className="flex-1"
+            />
           </div>
-        </nav>
-      </div>
-    </>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
