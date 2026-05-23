@@ -33,6 +33,7 @@ mod app;
 pub mod config;
 pub mod deploy;
 mod deploy_state;
+mod theme;
 mod ui;
 
 use crossterm::{
@@ -49,6 +50,11 @@ use deploy::StepUpdate;
 use deploy_state::DeployState;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 && args[1] == "theme" {
+        return theme::run_theme_editor();
+    }
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
