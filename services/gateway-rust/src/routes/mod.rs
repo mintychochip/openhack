@@ -79,6 +79,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(web::scope("/api/leaderboard").default_service(web::to(proxy::leaderboard_handler)))
         .service(web::scope("/api/mail").default_service(web::to(proxy::mail_handler)))
         .service(web::scope("/api/notify").default_service(web::to(proxy::notify_handler)))
+        .service(web::scope("/api/ai/brand-extract").default_service(web::to(proxy::brand_extract_handler)))
         .service(web::scope("/api/ai").default_service(web::to(proxy::ai_handler)))
         .service(web::scope("/api/analytics").default_service(web::to(proxy::analytics_handler)))
         .service(web::scope("/api/sponsors").default_service(web::to(proxy::sponsors_handler)))

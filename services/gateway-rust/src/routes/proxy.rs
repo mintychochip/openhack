@@ -102,6 +102,14 @@ fn build_route_table() -> HashMap<&'static str, RouteConfig> {
             max_body_bytes: 1_048_576,
         },
     );
+    m.insert(
+        "/api/ai/brand-extract",
+        RouteConfig {
+            upstream: "http://ai-scraper-svc:3012".into(),
+            rate_limit: 10,
+            max_body_bytes: 65_536,
+        },
+    );
     m
 }
 
@@ -450,6 +458,7 @@ proxy_handler!(analytics_handler, "/api/analytics");
 proxy_handler!(sponsors_handler, "/api/sponsors");
 proxy_handler!(media_handler, "/api/media");
 proxy_handler!(discord_bot_handler, "/api/discord-bot");
+proxy_handler!(brand_extract_handler, "/api/ai/brand-extract");
 
 /// Composite health check — checks all downstream services.
 pub async fn proxy_health(state: web::Data<ProxyState>) -> HttpResponse {
@@ -465,6 +474,7 @@ pub async fn proxy_health(state: web::Data<ProxyState>) -> HttpResponse {
         ("sponsors", "http://sponsors-svc:3009/health"),
         ("media", "http://media-svc:3010/health"),
         ("discord_bot", "http://discord-bot-svc:3011/health"),
+        ("ai_scraper", "http://ai-scraper-svc:3012/health"),
     ];
 
     let mut results = serde_json::Map::new();
