@@ -22,7 +22,7 @@ tokio = { workspace = true }
 thiserror = { workspace = true }
 jsonwebtoken = { workspace = true }
 actix-multipart = "0.6"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "multipart"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-tls", "multipart"] }
 rand = "0.8"
 futures = "0.3"
 
