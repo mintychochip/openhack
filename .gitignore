@@ -39,3 +39,10 @@ infra/terraform/.terraform.lock.hcl
 
 # Logs
 *.log
+
+# Screenshots / temp
+screenshot_*.png
+temp-playwright/
+
+# TypeScript build info
+web/tsconfig.tsbuildinfo
