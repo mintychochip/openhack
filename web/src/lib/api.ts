@@ -148,7 +148,8 @@ class ApiClient {
   }
 
   private async _doRefresh(): Promise<string | null> {
-    if (!this.refreshToken) {
+    const currentRefreshToken = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : this.refreshToken
+    if (!currentRefreshToken) {
       this.clearAuth()
       return null
     }
@@ -157,7 +158,7 @@ class ApiClient {
       const response = await fetch(buildUrl("/api/auth/refresh"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: this.refreshToken }),
+        body: JSON.stringify({ refresh_token: currentRefreshToken }),
       })
 
       if (!response.ok) {
@@ -195,8 +196,9 @@ class ApiClient {
       },
     }
 
-    if (requiresAuth && this.token) {
-      ;(config.headers as Record<string, string>)["Authorization"] = `Bearer ${this.token}`
+    const currentToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : this.token
+    if (requiresAuth && currentToken) {
+      ;(config.headers as Record<string, string>)["Authorization"] = `Bearer ${currentToken}`
     }
 
     if (body) {
@@ -216,11 +218,9 @@ class ApiClient {
         }
         if (!retryResponse.ok) {
           const errorData = await retryResponse.json().catch(() => ({}))
-          throw new ApiError(
-            retryResponse.status,
-            errorData.code || "UNKNOWN_ERROR",
-            errorData.message || retryResponse.statusText,
-          )
+          const message = errorData.message || errorData.error || retryResponse.statusText
+          const code = errorData.code || errorData.error || "UNKNOWN_ERROR"
+          throw new ApiError(retryResponse.status, code, message)
         }
         return retryResponse.json()
       }
@@ -229,11 +229,9 @@ class ApiClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new ApiError(
-        response.status,
-        errorData.code || "UNKNOWN_ERROR",
-        errorData.message || response.statusText,
-      )
+      const message = errorData.message || errorData.error || response.statusText
+      const code = errorData.code || errorData.error || "UNKNOWN_ERROR"
+      throw new ApiError(response.status, code, message)
     }
 
     return response.json()
@@ -385,11 +383,9 @@ class ApiClient {
         })
         if (!retryResponse.ok) {
           const errorData = await retryResponse.json().catch(() => ({}))
-          throw new ApiError(
-            retryResponse.status,
-            errorData.code || "UNKNOWN_ERROR",
-            errorData.message || retryResponse.statusText,
-          )
+          const message = errorData.message || errorData.error || retryResponse.statusText
+          const code = errorData.code || errorData.error || "UNKNOWN_ERROR"
+          throw new ApiError(retryResponse.status, code, message)
         }
         return retryResponse.json()
       }
@@ -398,12 +394,10 @@ class ApiClient {
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new ApiError(
-        response.status,
-        errorData.code || "UNKNOWN_ERROR",
-        errorData.message || response.statusText,
-      )
+          const errorData = await response.json().catch(() => ({}))
+          const message = errorData.message || errorData.error || response.statusText
+          const code = errorData.code || errorData.error || "UNKNOWN_ERROR"
+          throw new ApiError(response.status, code, message)
     }
 
     return response.json()
@@ -503,11 +497,9 @@ class ApiClient {
         })
         if (!retryResponse.ok) {
           const errorData = await retryResponse.json().catch(() => ({}))
-          throw new ApiError(
-            retryResponse.status,
-            errorData.code || "UNKNOWN_ERROR",
-            errorData.message || retryResponse.statusText,
-          )
+          const message = errorData.message || errorData.error || retryResponse.statusText
+          const code = errorData.code || errorData.error || "UNKNOWN_ERROR"
+          throw new ApiError(retryResponse.status, code, message)
         }
         return retryResponse.json()
       }
@@ -516,12 +508,10 @@ class ApiClient {
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new ApiError(
-        response.status,
-        errorData.code || "UNKNOWN_ERROR",
-        errorData.message || response.statusText,
-      )
+          const errorData = await response.json().catch(() => ({}))
+          const message = errorData.message || errorData.error || response.statusText
+          const code = errorData.code || errorData.error || "UNKNOWN_ERROR"
+          throw new ApiError(response.status, code, message)
     }
 
     return response.json()
@@ -603,11 +593,9 @@ class ApiClient {
         })
         if (!retryResponse.ok) {
           const errorData = await retryResponse.json().catch(() => ({}))
-          throw new ApiError(
-            retryResponse.status,
-            errorData.code || "UNKNOWN_ERROR",
-            errorData.message || retryResponse.statusText,
-          )
+          const message = errorData.message || errorData.error || retryResponse.statusText
+          const code = errorData.code || errorData.error || "UNKNOWN_ERROR"
+          throw new ApiError(retryResponse.status, code, message)
         }
         return retryResponse.json()
       }
@@ -616,12 +604,10 @@ class ApiClient {
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new ApiError(
-        response.status,
-        errorData.code || "UNKNOWN_ERROR",
-        errorData.message || response.statusText,
-      )
+          const errorData = await response.json().catch(() => ({}))
+          const message = errorData.message || errorData.error || response.statusText
+          const code = errorData.code || errorData.error || "UNKNOWN_ERROR"
+          throw new ApiError(response.status, code, message)
     }
 
     return response.json()
@@ -912,6 +898,29 @@ class ApiClient {
     return this.request<{ rejected: true }>(`/api/sponsor/submissions/${submissionId}/reject`, {
       method: "POST",
     })
+  }
+
+  // ==================== Brand Extraction ====================
+
+  async extractBrand(url: string) {
+    return this.request<{
+      logoUrl: string | null;
+      semanticColors: Record<string, string | null>;
+      suggestedPreset: string;
+      fontConfig: {
+        display?: { url: string; family: string };
+        heading?: { url: string; family: string };
+        body?: { url: string; family: string };
+      };
+      extracted: {
+        rawColors: string[];
+        rawFonts: string[];
+        websiteVibe: string;
+      };
+    }>("/api/ai/brand-extract", {
+      method: "POST",
+      body: { url },
+    });
   }
 
   // Discord Bot

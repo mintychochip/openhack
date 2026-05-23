@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { api } from "@/lib/api"
 import { useRouter } from "next/navigation"
+import { toast } from "@/hooks/use-toast"
 
 interface User {
   id: string
@@ -41,9 +42,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const userData = await api.getMe()
         setUser(userData)
-      } catch (error) {
+      } catch (error: any) {
         api.logout()
         setUser(null)
+        toast({
+          title: "Session expired",
+          description: error?.message || "Please log in again.",
+          variant: "destructive",
+        })
       } finally {
         setIsLoading(false)
       }
