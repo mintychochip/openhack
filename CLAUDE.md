@@ -325,3 +325,85 @@ Languages that lack a native "side effects" tag should use the following project
 | Rust | `# Side Effects` section |
 | Java | `@sideEffect` Javadoc tag |
 | C/C++ | `@sideeffect` Doxygen tag |
+
+---
+
+## Atomic Commits Enforcement
+
+Every commit must represent exactly one logical change. Mixed commits spanning unrelated features, fixes, or subsystems are forbidden.
+
+### 1. One Logical Change Per Commit
+
+A commit must represent **exactly one** of: a feature, a fix, a refactor, a docs update, or a chore.
+
+If `git diff --stat` shows changes across unrelated subsystems (e.g. `services/ai-rust/` + `web/src/contexts/theme-context.tsx` + `docker-compose.yml`), it **must be split** into separate commits before pushing.
+
+### 2. File Grouping Rules
+
+Before committing, categorize modified files into logical groups and commit each group independently:
+
+| Group | Examples |
+|-------|----------|
+| **Backend** | One microservice at a time (`ai-rust`, `core-rust`, `gateway-rust`, `ai-scraper`) |
+| **Frontend** | One feature area at a time (theme, auth, SSE, admin pages, dashboard layout) |
+| **Infra** | `docker-compose.yml`, DB migrations, `.env.example`, `.gitignore` |
+| **CLI/Tools** | Standalone tooling or script changes |
+
+Never mix backend + frontend + infra in the same commit unless the change is a single cross-cutting concern (e.g. a new env var that both backend and docker-compose need simultaneously).
+
+### 3. How to Split Mixed Changes
+
+1. Stage only files for the current logical group: `git add <file>...`
+2. If a single file contains mixed changes for different concerns, use `git add -p` (patch mode) to stage hunks selectively.
+3. If patch mode is too difficult or risky, edit the file to separate concerns, then stage and commit each group.
+4. When reorganizing an existing mixed working tree, create a backup branch first: `git branch backup-<description>`
+
+### 4. Untracked Files and Generated Artifacts
+
+The following must **never** be committed:
+
+- Screenshots (`screenshot_*.png`, `*.jpg` dumps)
+- Temporary directories (`temp-*`, `.pytest_cache/`, `playwright-report/`)
+- Build artifacts (`target/`, `node_modules/`, `.next/`, `out/`)
+- Cache files (`*.tsbuildinfo`, `Cargo.lock` — already in `.gitignore`)
+- Log files (`*.log`)
+
+Before committing, verify no garbage is staged:
+```bash
+git status          # check untracked files
+git diff --stat     # verify only intended files are modified
+```
+
+If untracked trash exists, add it to `.gitignore` or delete it. Reset accidentally modified artifacts with `git checkout -- <file>`.
+
+### 5. Commit Message Format
+
+Use **Conventional Commits** with imperative mood:
+
+```
+type(scope): description
+```
+
+- **Types**: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `perf`
+- **Scope**: subsystem name (`ai`, `core`, `gateway`, `web`, `cli`, `infra`)
+- **Description**: lowercase, imperative, no trailing period
+- **Body** (optional): explain *why* for complex changes, keep to 72 chars/line
+
+Examples:
+```
+feat(ai): add brand normalization endpoint
+fix(web): read auth tokens from localStorage on every request
+chore(infra): add ai-scraper-svc to docker-compose
+```
+
+### 6. Pre-Commit Checklist (Mandatory)
+
+Before every `git commit`, confirm:
+
+1. [ ] This commit touches **only one** logical concern.
+2. [ ] No untracked/generated files are staged.
+3. [ ] Commit message follows `type(scope): description` format.
+4. [ ] `git diff --cached --stat` shows only files related to this single concern.
+5. [ ] A `git log --oneline -5` preview makes sense as a readable history.
+
+If any checkbox fails, stop and reorganize the commit before proceeding.
