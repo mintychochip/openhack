@@ -6,3 +6,4 @@ pub mod insights;
 pub mod llm;
 pub mod rag;
 pub mod team_matcher;
+pub mod brand;

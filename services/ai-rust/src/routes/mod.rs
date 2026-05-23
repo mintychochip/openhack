@@ -4,6 +4,7 @@ pub mod ideas;
 pub mod insights;
 pub mod knowledge;
 pub mod team_matcher;
+pub mod brand;
 
 use actix_web::web;
 
@@ -25,6 +26,7 @@ use actix_web::web;
 /// - POST `/code-review` → review code
 /// - GET `/insights` → get cached insights
 /// - POST `/insights/generate` → generate insights
+/// - POST `/brand-normalize` → normalize scraped brand data into a theme
 ///
 /// # Errors
 ///
@@ -67,6 +69,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route(
                 "/insights/generate",
                 web::post().to(insights::generate_insights),
+            )
+            .route(
+                "/brand-normalize",
+                web::post().to(brand::brand_normalize),
             ),
     );
 }
