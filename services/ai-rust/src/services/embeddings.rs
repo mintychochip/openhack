@@ -10,10 +10,10 @@ use redis::AsyncCommands;
 /// Computes an MD5 hash of the input text and checks Redis for a cached embedding
 /// under the key `embedding:{md5_hex}` if `redis_conn` is `Some`. If found, deserializes
 /// the JSON array into a `Vec<f32>`. If not found or `redis_conn` is `None`, calls the
-/// `OpenAI` embeddings API at `https://api.openai.com/v1/embeddings` with the configured
-/// embeddings model, extracts the embedding from `data[0].embedding`, caches it in Redis
-/// with a 7-day TTL (604800 seconds) if available, and returns it. Always uses `OpenAI`'s
-/// embeddings API regardless of the `LLM_PROVIDER` setting.
+/// embeddings API at `{openai_base_url}/embeddings` (defaults to OpenAI but can be
+/// overridden via `OPENAI_BASE_URL` for Ollama, vLLM, or any OpenAI-compatible endpoint),
+/// with the configured embeddings model, extracts the embedding from `data[0].embedding`,
+/// caches it in Redis with a 7-day TTL (604800 seconds) if available, and returns it.
 ///
 /// # Errors
 ///
@@ -60,13 +60,18 @@ pub async fn get_embedding(
         "input": text,
     });
 
-    let response = http_client
-        .post("https://api.openai.com/v1/embeddings")
-        .header("Authorization", format!("Bearer {}", config.openai_api_key))
+    let url = format!("{}/embeddings", config.openai_base_url.trim_end_matches('/'));
+
+    let mut request = http_client
+        .post(&url)
         .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await?;
+        .json(&body);
+
+    if !config.openai_api_key.is_empty() {
+        request = request.header("Authorization", format!("Bearer {}", config.openai_api_key));
+    }
+
+    let response = request.send().await?;
 
     let resp_body: serde_json::Value = response.json().await?;
 

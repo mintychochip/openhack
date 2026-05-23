@@ -55,13 +55,18 @@ pub async fn llm_chat(
     }
 }
 
-/// Call the `OpenAI` Chat Completions API.
+/// Call an OpenAI-compatible Chat Completions API.
 ///
 /// # Expected Behavior
 ///
-/// Sends a POST request to `https://api.openai.com/v1/chat/completions` with
-/// the configured model and messages. Parses the response and extracts the
-/// assistant's message content from `choices[0].message.content`.
+/// Sends a POST request to `{openai_base_url}/chat/completions` with
+/// the configured model and messages. The `openai_base_url` defaults to
+/// `https://api.openai.com/v1` but can be overridden via `OPENAI_BASE_URL`
+/// to point at Ollama, LM Studio, vLLM, or any other OpenAI-compatible
+/// endpoint. The Authorization header is only sent if `openai_api_key` is
+/// non-empty (some local endpoints don't require one). Parses the response
+/// and extracts the assistant's message content from
+/// `choices[0].message.content`.
 ///
 /// # Errors
 ///
@@ -70,7 +75,8 @@ pub async fn llm_chat(
 ///
 /// # Side Effects
 ///
-/// - Makes an HTTP POST request to the `OpenAI` API (network I/O).
+/// - Makes an HTTP POST request to the configured OpenAI-compatible endpoint
+///   (network I/O).
 async fn call_openai(
     config: &Config,
     http_client: &reqwest::Client,
@@ -91,13 +97,18 @@ async fn call_openai(
         "messages": api_messages,
     });
 
-    let response = http_client
-        .post("https://api.openai.com/v1/chat/completions")
-        .header("Authorization", format!("Bearer {}", config.openai_api_key))
+    let url = format!("{}/chat/completions", config.openai_base_url.trim_end_matches('/'));
+
+    let mut request = http_client
+        .post(&url)
         .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await?;
+        .json(&body);
+
+    if !config.openai_api_key.is_empty() {
+        request = request.header("Authorization", format!("Bearer {}", config.openai_api_key));
+    }
+
+    let response = request.send().await?;
 
     let resp_body: serde_json::Value = response.json().await?;
 

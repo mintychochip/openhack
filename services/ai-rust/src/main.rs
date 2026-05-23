@@ -56,18 +56,19 @@ use sqlx::postgres::PgPool;
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
 
-    let config = config::Config::from_env();
+    let mut config = config::Config::from_env();
     std::env::set_var("RUST_LOG", "info");
     env_logger::init();
 
     log::info!("Starting AI service on port {}", config.port);
     log::info!("LLM provider: {}", config.llm_provider);
     log::info!(
-        "Features - chat: {}, ideas: {}, team_matcher: {}, code_review: {}",
+        "Features - chat: {}, ideas: {}, team_matcher: {}, code_review: {}, brand_extraction: {}",
         config.feature_chat,
         config.feature_idea_generator,
         config.feature_team_matcher,
-        config.feature_code_review
+        config.feature_code_review,
+        config.feature_brand_extraction
     );
 
     let pool = db::create_pool(&config.database_url, 5)
@@ -77,6 +78,13 @@ async fn main() -> std::io::Result<()> {
     db::health_check(&pool)
         .await
         .expect("Database health check failed");
+
+    // Merge dashboard settings from DB (env vars take precedence)
+    if let Err(e) = config.merge_from_db(&pool).await {
+        log::warn!("Failed to load AI config from database, using env defaults: {}", e);
+    } else {
+        log::info!("AI config merged from database (env vars still take precedence)");
+    }
 
     let redis_url = config.redis_url.as_deref().unwrap_or("");
     let redis_conn_data = redis_ext::create_connection(redis_url).await;

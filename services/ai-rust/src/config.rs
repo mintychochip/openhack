@@ -25,6 +25,7 @@ pub struct Config {
     pub port: u16,
     pub llm_provider: String,
     pub openai_api_key: String,
+    pub openai_base_url: String,
     pub anthropic_api_key: String,
     pub openai_model: String,
     pub anthropic_model: String,
@@ -35,6 +36,7 @@ pub struct Config {
     pub feature_idea_generator: bool,
     pub feature_team_matcher: bool,
     pub feature_code_review: bool,
+    pub feature_brand_extraction: bool,
     pub jwt_secret: String,
     pub cors_allowed_origins: Option<Vec<String>>,
 }
@@ -61,6 +63,77 @@ impl Config {
     /// # Side Effects
     ///
     /// - Reads environment variables (read-only).
+    /// Override config values from the database `core.hackathon_config` table.
+    ///
+    /// # Expected Behavior
+    ///
+    /// Queries `core.hackathon_config` for AI-related fields and replaces
+    /// empty or default env-var values with database values. Environment
+    /// variables that are explicitly set (non-empty) always take precedence
+    /// over database values. This allows `.env` files to override dashboard
+    /// settings when needed.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if the database query fails. On error, the original
+    /// env-based config is preserved.
+    ///
+    /// # Side Effects
+    ///
+    /// - Executes a database read query against `core.hackathon_config`.
+    pub async fn merge_from_db(&mut self, pool: &sqlx::PgPool) -> Result<(), sqlx::Error> {
+        #[derive(sqlx::FromRow)]
+        struct DbAiConfig {
+            ai_provider: Option<String>,
+            ai_enabled: Option<bool>,
+            openai_api_key: Option<String>,
+            openai_base_url: Option<String>,
+            openai_model: Option<String>,
+            anthropic_api_key: Option<String>,
+            anthropic_model: Option<String>,
+        }
+
+        let row: Option<DbAiConfig> = sqlx::query_as(
+            "SELECT ai_provider, ai_enabled, openai_api_key, openai_base_url, openai_model, anthropic_api_key, anthropic_model FROM core.hackathon_config LIMIT 1"
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        if let Some(db) = row {
+            if self.llm_provider.is_empty() || self.llm_provider == "openai" {
+                if let Some(v) = db.ai_provider { self.llm_provider = v; }
+            }
+            // Only override API keys from DB if the env var is empty
+            if self.openai_api_key.is_empty() {
+                if let Some(v) = db.openai_api_key { self.openai_api_key = v; }
+            }
+            if self.anthropic_api_key.is_empty() {
+                if let Some(v) = db.anthropic_api_key { self.anthropic_api_key = v; }
+            }
+            if self.openai_base_url == "https://api.openai.com/v1" {
+                if let Some(v) = db.openai_base_url { self.openai_base_url = v; }
+            }
+            if self.openai_model == "gpt-4-turbo" {
+                if let Some(v) = db.openai_model { self.openai_model = v; }
+            }
+            if self.anthropic_model == "claude-3-5-sonnet-20241022" {
+                if let Some(v) = db.anthropic_model { self.anthropic_model = v; }
+            }
+            // ai_enabled can be used to drive feature flags
+            if let Some(enabled) = db.ai_enabled {
+                if !enabled {
+                    self.feature_chat = false;
+                    self.feature_idea_generator = false;
+                    self.feature_team_matcher = false;
+                    self.feature_code_review = false;
+                    self.feature_brand_extraction = false;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn from_env() -> Self {
         let database_url =
             env::var("DATABASE_URL").expect("DATABASE_URL environment variable must be set");
@@ -72,6 +145,8 @@ impl Config {
             .expect("SERVICE_PORT/PORT must be a valid u16");
         let llm_provider = env::var("LLM_PROVIDER").unwrap_or_else(|_| "openai".to_string());
         let openai_api_key = env::var("OPENAI_API_KEY").unwrap_or_default();
+        let openai_base_url = env::var("OPENAI_BASE_URL")
+            .unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
         let anthropic_api_key = env::var("ANTHROPIC_API_KEY").unwrap_or_default();
         let openai_model = env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4-turbo".to_string());
         let anthropic_model = env::var("ANTHROPIC_MODEL")
@@ -98,6 +173,9 @@ impl Config {
         let feature_code_review = env::var("FEATURE_CODE_REVIEW")
             .map(|v| v == "true" || v == "1")
             .unwrap_or(false);
+        let feature_brand_extraction = env::var("FEATURE_BRAND_EXTRACTION")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(true);
 
         let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| {
             log::warn!("JWT_SECRET not set, using default (INSECURE for production)");
@@ -114,6 +192,7 @@ impl Config {
             port,
             llm_provider,
             openai_api_key,
+            openai_base_url,
             anthropic_api_key,
             openai_model,
             anthropic_model,
@@ -124,6 +203,7 @@ impl Config {
             feature_idea_generator,
             feature_team_matcher,
             feature_code_review,
+            feature_brand_extraction,
             jwt_secret,
             cors_allowed_origins,
         }
