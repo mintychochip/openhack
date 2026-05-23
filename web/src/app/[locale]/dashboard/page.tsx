@@ -5,7 +5,8 @@ import { api } from "@/lib/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Trophy, Mail, Award, Clock } from "lucide-react"
 import { PhaseCountdown } from "@/components/CountdownTimer"
-import { useSSEContext } from "@/components/sse-provider"
+import { toast } from "@/hooks/use-toast"
+
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
@@ -33,15 +34,18 @@ export default function DashboardPage() {
           totalProjects: projects.projects.length,
           totalEvents: events.events.length,
         })
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to load dashboard data:", error)
+        toast({
+          title: "Failed to load dashboard",
+          description: error?.message || "Could not load your hackathon data. Please refresh.",
+          variant: "destructive",
+        })
       }
     }
 
     loadData()
   }, [])
-
-  const { connected } = useSSEContext();
 
   if (!user) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
@@ -69,12 +73,6 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <PhaseCountdown hackathonId="00000000-0000-0000-0000-000000000001" />
-          <div className="mt-4 flex items-center gap-2 text-sm">
-            <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`} />
-            <span className="text-muted-foreground">
-              {connected ? 'Live updates enabled' : 'Live updates disconnected'}
-            </span>
-          </div>
         </CardContent>
       </Card>
 

@@ -34,6 +34,12 @@ const sponsorNavItems: NavItem[] = [
   { href: "/dashboard/sponsor/submissions", label: "Submissions" },
 ]
 
+const adminNavItems: NavItem[] = [
+  ...judgeNavItems,
+  { href: "/dashboard/admin/hackathon", label: "Hackathon" },
+  { href: "/dashboard/admin/theme", label: "Theme" },
+]
+
 export function MobileNav() {
   const [isOpen, setIsOpen] = React.useState(false)
   const pathname = usePathname()
@@ -44,7 +50,9 @@ export function MobileNav() {
   }, [pathname])
 
   let navItems = participantNavItems
-  if (user?.roles.includes("judge") || user?.roles.includes("admin")) {
+  if (user?.roles.includes("admin")) {
+    navItems = adminNavItems
+  } else if (user?.roles.includes("judge")) {
     navItems = judgeNavItems
   } else if (user?.roles.includes("sponsor")) {
     navItems = sponsorNavItems

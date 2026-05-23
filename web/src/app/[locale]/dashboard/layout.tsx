@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Home, Users, Trophy, BarChart3, Settings, LogOut, ClipboardList, Briefcase } from "lucide-react"
+import { Home, Users, Trophy, BarChart3, Settings, LogOut, ClipboardList, Briefcase, Palette } from "lucide-react"
 import { MobileNav } from "@/components/mobile-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/contexts/auth-context"
@@ -28,6 +28,17 @@ const sponsorNavItems = [
   { href: "/dashboard/sponsor/submissions", icon: ClipboardList, label: "Submissions" },
 ]
 
+const adminNavItems = [
+  { href: "/dashboard", icon: Home, label: "Dashboard" },
+  { href: "/dashboard/teams", icon: Users, label: "Teams" },
+  { href: "/dashboard/projects", icon: Trophy, label: "Projects" },
+  { href: "/dashboard/events", icon: BarChart3, label: "Events" },
+  { href: "/dashboard/leaderboard", icon: ClipboardList, label: "Leaderboard" },
+  { href: "/dashboard/judging", icon: ClipboardList, label: "Judging" },
+  { href: "/dashboard/admin/hackathon", icon: Settings, label: "Hackathon" },
+  { href: "/dashboard/admin/theme", icon: Palette, label: "Theme" },
+]
+
 export default function DashboardLayout({
   children,
 }: {
@@ -44,7 +55,9 @@ export default function DashboardLayout({
   const brandName = mounted ? (config?.name || "OpenHack") : "OpenHack"
 
   let navItems = participantNavItems
-  if (user?.roles.includes("judge") || user?.roles.includes("admin")) {
+  if (user?.roles.includes("admin")) {
+    navItems = adminNavItems
+  } else if (user?.roles.includes("judge")) {
     navItems = judgeNavItems
   } else if (user?.roles.includes("sponsor")) {
     navItems = sponsorNavItems
