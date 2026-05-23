@@ -26,6 +26,13 @@ pub struct HackathonConfig {
     pub daisyui_theme_preset: Option<String>,
     pub daisyui_custom_theme: Option<serde_json::Value>,
     pub font_config: Option<serde_json::Value>,
+    pub ai_provider: Option<String>,
+    pub ai_enabled: Option<bool>,
+    pub openai_api_key: Option<String>,
+    pub openai_base_url: Option<String>,
+    pub openai_model: Option<String>,
+    pub anthropic_api_key: Option<String>,
+    pub anthropic_model: Option<String>,
 }
 
 /// Request body for updating hackathon configuration.
@@ -48,6 +55,13 @@ pub struct HackathonConfigUpdate {
     pub daisyui_theme_preset: Option<String>,
     pub daisyui_custom_theme: Option<serde_json::Value>,
     pub font_config: Option<serde_json::Value>,
+    pub ai_provider: Option<String>,
+    pub ai_enabled: Option<bool>,
+    pub openai_api_key: Option<String>,
+    pub openai_base_url: Option<String>,
+    pub openai_model: Option<String>,
+    pub anthropic_api_key: Option<String>,
+    pub anthropic_model: Option<String>,
 }
 
 /// Response body for hackathon configuration.
@@ -72,6 +86,13 @@ pub struct HackathonConfigResponse {
     pub daisyui_theme_preset: String,
     pub daisyui_custom_theme: serde_json::Value,
     pub font_config: serde_json::Value,
+    pub ai_provider: String,
+    pub ai_enabled: bool,
+    pub openai_api_key: String,
+    pub openai_base_url: String,
+    pub openai_model: String,
+    pub anthropic_api_key: String,
+    pub anthropic_model: String,
 }
 
 impl From<HackathonConfig> for HackathonConfigResponse {
@@ -91,6 +112,27 @@ impl From<HackathonConfig> for HackathonConfigResponse {
             daisyui_theme_preset: c.daisyui_theme_preset.unwrap_or_else(|| "light".to_string()),
             daisyui_custom_theme: c.daisyui_custom_theme.unwrap_or(serde_json::json!({})),
             font_config: c.font_config.unwrap_or(serde_json::json!({})),
+            ai_provider: c.ai_provider.unwrap_or_else(|| "openai".to_string()),
+            ai_enabled: c.ai_enabled.unwrap_or(false),
+            openai_api_key: mask_api_key(&c.openai_api_key),
+            openai_base_url: c.openai_base_url.unwrap_or_else(|| "https://api.openai.com/v1".to_string()),
+            openai_model: c.openai_model.unwrap_or_else(|| "gpt-4-turbo".to_string()),
+            anthropic_api_key: mask_api_key(&c.anthropic_api_key),
+            anthropic_model: c.anthropic_model.unwrap_or_else(|| "claude-3-5-sonnet-20241022".to_string()),
         }
+    }
+}
+
+/// Mask an API key for safe display in API responses.
+///
+/// # Expected Behavior
+///
+/// Shows only the last 4 characters prefixed with `***`. Returns an empty
+/// string if the input is None or shorter than 5 characters.
+fn mask_api_key(key: &Option<String>) -> String {
+    match key {
+        Some(k) if k.len() > 4 => format!("***{}", &k[k.len()-4..]),
+        Some(_) => "***".to_string(),
+        None => String::new(),
     }
 }

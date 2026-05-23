@@ -23,7 +23,7 @@ impl HackathonService {
     /// - Reads from `core.hackathon_config` (database read).
     pub async fn get_config(pool: &PgPool) -> Result<HackathonConfigResponse, CoreError> {
         let row = sqlx::query_as::<_, HackathonConfig>(
-            "SELECT id, name, tagline, start_time, end_time, timezone, logo_url, theme_colors, social_links, registration_open, custom_css, daisyui_theme_preset, daisyui_custom_theme, font_config FROM core.hackathon_config LIMIT 1",
+            "SELECT id, name, tagline, start_time, end_time, timezone, logo_url, theme_colors, social_links, registration_open, custom_css, daisyui_theme_preset, daisyui_custom_theme, font_config, ai_provider, ai_enabled, openai_api_key, openai_base_url, openai_model, anthropic_api_key, anthropic_model FROM core.hackathon_config LIMIT 1",
         )
         .fetch_optional(pool)
         .await?
@@ -105,6 +105,34 @@ impl HackathonService {
         }
         if data.font_config.is_some() {
             updates.push(format!("font_config = ${param_idx}"));
+            param_idx += 1;
+        }
+        if data.ai_provider.is_some() {
+            updates.push(format!("ai_provider = ${param_idx}"));
+            param_idx += 1;
+        }
+        if data.ai_enabled.is_some() {
+            updates.push(format!("ai_enabled = ${param_idx}"));
+            param_idx += 1;
+        }
+        if data.openai_api_key.is_some() {
+            updates.push(format!("openai_api_key = ${param_idx}"));
+            param_idx += 1;
+        }
+        if data.openai_base_url.is_some() {
+            updates.push(format!("openai_base_url = ${param_idx}"));
+            param_idx += 1;
+        }
+        if data.openai_model.is_some() {
+            updates.push(format!("openai_model = ${param_idx}"));
+            param_idx += 1;
+        }
+        if data.anthropic_api_key.is_some() {
+            updates.push(format!("anthropic_api_key = ${param_idx}"));
+            param_idx += 1;
+        }
+        if data.anthropic_model.is_some() {
+            updates.push(format!("anthropic_model = ${param_idx}"));
         }
 
         if updates.is_empty() {
@@ -112,7 +140,7 @@ impl HackathonService {
         }
 
         let sql = format!(
-            "UPDATE core.hackathon_config SET {} WHERE id = (SELECT id FROM core.hackathon_config LIMIT 1) RETURNING id, name, tagline, start_time, end_time, timezone, logo_url, theme_colors, social_links, registration_open, custom_css, daisyui_theme_preset, daisyui_custom_theme, font_config",
+            "UPDATE core.hackathon_config SET {} WHERE id = (SELECT id FROM core.hackathon_config LIMIT 1) RETURNING id, name, tagline, start_time, end_time, timezone, logo_url, theme_colors, social_links, registration_open, custom_css, daisyui_theme_preset, daisyui_custom_theme, font_config, ai_provider, ai_enabled, openai_api_key, openai_base_url, openai_model, anthropic_api_key, anthropic_model",
             updates.join(", ")
         );
 
@@ -155,6 +183,27 @@ impl HackathonService {
             query = query.bind(v);
         }
         if let Some(ref v) = data.font_config {
+            query = query.bind(v);
+        }
+        if let Some(ref v) = data.ai_provider {
+            query = query.bind(v);
+        }
+        if let Some(ref v) = data.ai_enabled {
+            query = query.bind(v);
+        }
+        if let Some(ref v) = data.openai_api_key {
+            query = query.bind(v);
+        }
+        if let Some(ref v) = data.openai_base_url {
+            query = query.bind(v);
+        }
+        if let Some(ref v) = data.openai_model {
+            query = query.bind(v);
+        }
+        if let Some(ref v) = data.anthropic_api_key {
+            query = query.bind(v);
+        }
+        if let Some(ref v) = data.anthropic_model {
             query = query.bind(v);
         }
 
