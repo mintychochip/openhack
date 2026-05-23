@@ -51,7 +51,12 @@ export async function normalizeBrand(
       raw_colors: rawColors,
       raw_fonts: rawFonts,
       website_vibe: websiteVibe,
-      color_context: colorContext,
+      color_context: colorContext ? {
+        hero_colors: colorContext.heroColors,
+        cta_colors: colorContext.ctaColors,
+        heading_colors: colorContext.headingColors,
+        dominant_colors: colorContext.dominantColors,
+      } : undefined,
     }),
   });
 
